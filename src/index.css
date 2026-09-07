@@ -801,3 +801,724 @@ button {
     flex: 1;
   }
 }
+
+
+/* ============================================================
+   MAIN NAVIGATION
+   ============================================================ */
+
+.main-navigation {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  padding: 10px 24px;
+
+  background: white;
+
+  border-bottom: 1px solid #e5e5e5;
+
+  overflow-x: auto;
+}
+
+.nav-button {
+  padding: 10px 16px;
+
+  border: 0;
+  border-radius: 9px;
+
+  background: transparent;
+
+  color: #666;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  white-space: nowrap;
+}
+
+.nav-button:hover {
+  background: #f2f2f2;
+}
+
+.nav-button.active {
+  background: #111;
+  color: white;
+}
+
+
+/* ============================================================
+   SECTION CONTENT
+   ============================================================ */
+
+.section-content {
+  max-width: 1200px;
+
+  margin: 0 auto;
+
+  padding: 30px 24px 60px;
+}
+
+.section-heading {
+  display: flex;
+
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 25px;
+}
+
+.section-heading h1 {
+  margin: 0 0 5px;
+
+  font-size: 30px;
+}
+
+.section-heading p {
+  margin: 0;
+
+  color: #777;
+}
+
+
+/* ============================================================
+   EMPLOYEES
+   ============================================================ */
+
+.employee-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fill,
+      minmax(280px, 1fr)
+    );
+
+  gap: 14px;
+}
+
+.employee-card {
+  padding: 18px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 14px;
+
+  background: white;
+
+  border: 1px solid #ddd;
+
+  border-radius: 14px;
+}
+
+.employee-avatar {
+  width: 48px;
+  height: 48px;
+
+  flex-shrink: 0;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #eee;
+
+  font-weight: 800;
+}
+
+.employee-card-info {
+  flex: 1;
+
+  min-width: 0;
+}
+
+.employee-card-info h3 {
+  margin: 0 0 4px;
+
+  font-size: 17px;
+}
+
+.employee-card-info p {
+  margin: 0;
+
+  color: #777;
+
+  font-size: 13px;
+}
+
+.icon-delete-button {
+  width: 36px;
+  height: 36px;
+
+  border: 0;
+
+  border-radius: 8px;
+
+  background: #fff1f1;
+
+  color: #c62828;
+}
+
+
+/* ============================================================
+   HOURS
+   ============================================================ */
+
+.hours-navigation {
+  margin-bottom: 18px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+}
+
+.hours-navigation strong {
+  min-width: 180px;
+
+  text-align: center;
+
+  font-size: 19px;
+}
+
+.hours-navigation button {
+  width: 38px;
+  height: 38px;
+
+  border: 1px solid #ddd;
+
+  border-radius: 9px;
+
+  background: white;
+
+  font-size: 21px;
+}
+
+.hours-navigation .today-button {
+  width: auto;
+
+  padding: 0 13px;
+
+  font-size: 13px;
+}
+
+.hours-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fill,
+      minmax(320px, 1fr)
+    );
+
+  gap: 14px;
+}
+
+.hours-card {
+  padding: 20px;
+
+  background: white;
+
+  border: 1px solid #ddd;
+
+  border-radius: 14px;
+}
+
+.hours-card h3 {
+  margin: 0 0 5px;
+
+  font-size: 18px;
+}
+
+.hours-card p {
+  margin: 0;
+
+  color: #777;
+
+  font-size: 13px;
+}
+
+.hours-values {
+  margin-top: 20px;
+
+  display: flex;
+
+  gap: 35px;
+}
+
+.hours-values div {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.hours-values strong {
+  font-size: 22px;
+}
+
+.hours-values span {
+  color: #777;
+
+  font-size: 12px;
+}
+
+
+/* ============================================================
+   EMPTY / COMING
+   ============================================================ */
+
+.empty-panel {
+  padding: 60px 20px;
+
+  text-align: center;
+
+  background: white;
+
+  border: 1px solid #ddd;
+
+  border-radius: 14px;
+
+  color: #777;
+}
+
+.coming-panel {
+  max-width: 550px;
+
+  margin: 50px auto;
+
+  padding: 45px 25px;
+
+  text-align: center;
+
+  background: white;
+
+  border: 1px solid #ddd;
+
+  border-radius: 16px;
+}
+
+.coming-icon {
+  font-size: 45px;
+
+  margin-bottom: 15px;
+}
+
+.coming-panel h2 {
+  margin: 0 0 8px;
+}
+
+.coming-panel p {
+  margin: 0 auto 20px;
+
+  max-width: 400px;
+
+  color: #777;
+
+  line-height: 1.5;
+}
+
+.coming-panel span {
+  display: inline-block;
+
+  padding: 7px 11px;
+
+  border-radius: 999px;
+
+  background: #eee;
+
+  font-size: 11px;
+
+  font-weight: 800;
+
+  letter-spacing: 1px;
+}
+
+.small-modal {
+  max-width: 450px;
+}
+
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+
+@media (max-width: 700px) {
+
+  .main-navigation {
+    padding: 8px 12px;
+  }
+
+  .nav-button {
+    padding: 9px 12px;
+
+    font-size: 13px;
+  }
+
+  .section-content {
+    padding: 22px 12px 45px;
+  }
+
+  .section-heading {
+    align-items: flex-start;
+
+    gap: 15px;
+  }
+
+  .section-heading h1 {
+    font-size: 25px;
+  }
+
+  .section-heading .primary-button {
+    white-space: nowrap;
+  }
+
+  .employee-grid,
+  .hours-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hours-navigation strong {
+    min-width: 140px;
+
+    font-size: 16px;
+  }
+}
+
+
+
+/* ============================================================
+   REQUESTS
+   ============================================================ */
+
+.requests-list {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 14px;
+}
+
+.request-card {
+  padding: 20px;
+
+  display: flex;
+
+  justify-content: space-between;
+
+  gap: 20px;
+
+  background: white;
+
+  border: 1px solid #ddd;
+
+  border-radius: 14px;
+}
+
+.request-main {
+  flex: 1;
+
+  min-width: 0;
+}
+
+.request-top {
+  display: flex;
+
+  align-items: flex-start;
+
+  justify-content: space-between;
+
+  gap: 15px;
+
+  margin-bottom: 15px;
+}
+
+.request-type {
+  display: inline-block;
+
+  padding: 5px 9px;
+
+  border-radius: 999px;
+
+  background: #eee;
+
+  font-size: 10px;
+
+  font-weight: 800;
+
+  letter-spacing: 0.8px;
+
+  text-transform: uppercase;
+}
+
+.request-top h3 {
+  margin: 8px 0 0;
+
+  font-size: 18px;
+}
+
+.request-status {
+  padding: 6px 10px;
+
+  border-radius: 999px;
+
+  font-size: 11px;
+
+  font-weight: 800;
+
+  text-transform: capitalize;
+}
+
+.request-status.pending {
+  background: #fff3cd;
+
+  color: #8a6500;
+}
+
+.request-status.approved {
+  background: #e4f5e8;
+
+  color: #237333;
+}
+
+.request-status.rejected {
+  background: #ffe7e7;
+
+  color: #b32626;
+}
+
+.request-status.cancelled {
+  background: #eee;
+
+  color: #777;
+}
+
+.request-date {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 4px;
+
+  margin-bottom: 13px;
+}
+
+.request-date strong,
+.request-reason strong,
+.manager-comment strong {
+  font-size: 12px;
+
+  color: #777;
+}
+
+.request-date span {
+  font-size: 15px;
+
+  font-weight: 600;
+}
+
+.request-reason p,
+.manager-comment p {
+  margin: 5px 0 0;
+
+  color: #555;
+
+  line-height: 1.45;
+}
+
+.manager-comment {
+  margin-top: 15px;
+
+  padding: 12px;
+
+  border-radius: 9px;
+
+  background: #f5f5f5;
+}
+
+.request-actions {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  align-self: center;
+}
+
+.approve-request-button,
+.reject-request-button {
+  padding: 10px 15px;
+
+  border-radius: 9px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.approve-request-button {
+  border: 0;
+
+  background: #111;
+
+  color: white;
+}
+
+.reject-request-button {
+  border: 1px solid #efbaba;
+
+  background: #fff5f5;
+
+  color: #bd2828;
+}
+
+.approve-request-button:hover {
+  opacity: 0.85;
+}
+
+.reject-request-button:hover {
+  background: #ffecec;
+}
+
+.decision-information {
+  padding: 13px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 5px;
+
+  border-radius: 10px;
+
+  background: #f4f4f4;
+}
+
+.decision-information strong {
+  font-size: 12px;
+
+  color: #777;
+}
+
+.decision-information span {
+  font-weight: 600;
+}
+
+.form label {
+  position: relative;
+}
+
+.label-help {
+  margin-left: 5px;
+
+  color: #999;
+
+  font-size: 11px;
+
+  font-weight: 400;
+}
+
+.form textarea {
+  width: 100%;
+
+  resize: vertical;
+
+  padding: 12px;
+
+  border: 1px solid #d5d5d5;
+
+  border-radius: 9px;
+
+  background: white;
+
+  font-family: inherit;
+
+  outline: none;
+}
+
+.form textarea:focus {
+  border-color: #111;
+}
+
+.request-type-selector {
+  padding: 13px;
+
+  border: 1px solid #ddd;
+
+  border-radius: 10px;
+}
+
+.selected-request-type {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.selected-request-type span {
+  font-weight: 700;
+}
+
+.selected-request-type small {
+  color: #777;
+}
+
+.request-warning {
+  padding: 13px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 5px;
+
+  border-radius: 10px;
+
+  background: #f5f5f5;
+
+  font-size: 12px;
+}
+
+.request-warning strong {
+  font-size: 12px;
+}
+
+.request-warning span {
+  color: #666;
+
+  line-height: 1.4;
+}
+
+
+/* ============================================================
+   MOBILE REQUESTS
+   ============================================================ */
+
+@media (max-width: 700px) {
+
+  .request-card {
+    flex-direction: column;
+  }
+
+  .request-actions {
+    width: 100%;
+  }
+
+  .request-actions button {
+    flex: 1;
+  }
+
+  .request-top {
+    flex-direction: column;
+  }
+
+}
