@@ -1,4 +1,5 @@
 import {
+  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -13,15 +14,13 @@ import {
 } from "firebase/firestore";
 
 import React, { useEffect, useMemo, useState } from "react";
-
-import { auth, db } from "./firebase";
-
+import { auth, db, messaging } from "./firebase";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut
 } from "firebase/auth";
-
+import { getToken } from "firebase/messaging";
 // ============================================================
 // HELPERS
 // ============================================================
@@ -111,6 +110,8 @@ function App() {
 const [employees, setEmployees] = useState([]);
 const [shifts, setShifts] = useState([]);
 const [requests, setRequests] = useState([]);
+const [notifications, setNotifications] =
+  useState([]);
 
   const [loading, setLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
@@ -136,12 +137,67 @@ const [requests, setRequests] = useState([]);
 
   const [editorDate, setEditorDate] =
     useState(new Date());
+    const [editorDepartment, setEditorDepartment] =
+  useState("Bar");
 
   const [showAddEmployee, setShowAddEmployee] =
     useState(false);
 
   const [newEmployeeName, setNewEmployeeName] =
     useState("");
+    const [newEmployeeEmail, setNewEmployeeEmail] =
+  useState("");
+    async function enablePushNotifications() {
+    try {
+      if (!("Notification" in window)) {
+        console.log("Notifications are not supported.");
+        return;
+      }
+
+      const permission =
+        await Notification.requestPermission();
+
+      if (permission !== "granted") {
+        console.log("Notification permission not granted.");
+        return;
+      }
+
+      const token = await getToken(messaging, {
+        vapidKey: "BNubueUytLgOiGi5nKi9X7cnpv-GwgQGAHoVjTFc-O_pTrMXz7tms67L5GkzXlAbPwBfBegnDvQ6xCAzrIaHeO4"
+      });
+
+      if (!token) {
+        console.log("Could not get FCM token.");
+        return;
+      }
+
+      await setDoc(
+  doc(
+    db,
+    "users",
+    user.uid,
+    "pushTokens",
+    encodeURIComponent(token)
+  ),
+  {
+    token,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  },
+  {
+    merge: true
+  }
+);
+
+console.log("FCM token saved successfully.");
+
+    } catch (error) {
+      console.error(
+        "Push notification setup error:",
+        error
+      );
+    }
+  }
 
   // ==========================================================
   // AUTH
@@ -273,10 +329,13 @@ const [requests, setRequests] = useState([]);
                   document.id,
 
                 name:
-                  document.data().name || "",
+  document.data().name || "",
 
-                authUID:
-                  document.data().authUID || null
+email:
+  document.data().email || "",
+
+authUID:
+  document.data().authUID || null
 
               })
             );
@@ -602,6 +661,65 @@ useEffect(() => {
   };
 
 }, [user, profile]);
+useEffect(() => {
+
+  if (!user) {
+    setNotifications([]);
+    return;
+  }
+
+  const notificationsQuery =
+    query(
+      collection(db, "notifications"),
+      orderBy("createdAt", "desc")
+    );
+
+  const unsubscribe =
+    onSnapshot(
+      notificationsQuery,
+      (snapshot) => {
+
+        const notificationList =
+          snapshot.docs.map(
+            (document) => {
+
+              const data =
+                document.data();
+
+              return {
+                id: document.id,
+                type:
+                  data.type || "",
+                title:
+                  data.title || "",
+                message:
+                  data.message || "",
+                publicationID:
+                  data.publicationID || null,
+                read:
+                  data.read || false,
+                createdAt:
+                  data.createdAt || null
+              };
+            }
+          );
+
+        setNotifications(
+          notificationList
+        );
+      },
+      (error) => {
+
+        console.error(
+          "Notifications listener error:",
+          error
+        );
+      }
+    );
+
+  return () => unsubscribe();
+
+}, [user]);
 
 
   // ==========================================================
@@ -724,12 +842,12 @@ useEffect(() => {
   // SHIFT EDITOR
   // ==========================================================
 
-  function openAddShift(date) {
-
-    setSelectedShift(null);
-    setEditorDate(date);
-    setShowEditor(true);
-  }
+ function openAddShift(date, department = "Bar") {
+  setSelectedShift(null);
+  setEditorDate(date);
+  setEditorDepartment(department);
+  setShowEditor(true);
+}
 
 
   function openEditShift(shift) {
@@ -852,6 +970,8 @@ async function createDayOffRequest({
   requestType,
   newStart,
   newEnd,
+  swapEmployeeID,
+  swapShiftID,
   reason
 }) {
 
@@ -860,6 +980,92 @@ async function createDayOffRequest({
   }
 
   try {
+
+    // -------------------------------------------------------
+    // Prevent duplicate pending requests
+    // -------------------------------------------------------
+
+    const existingRequestsSnapshot =
+      await new Promise(
+        (resolve, reject) => {
+
+          const unsubscribe =
+            onSnapshot(
+              query(
+                collection(
+                  db,
+                  "requests"
+                ),
+                where(
+                  "employeeID",
+                  "==",
+                  user.uid
+                ),
+                where(
+                  "status",
+                  "==",
+                  "pending"
+                )
+              ),
+              (snapshot) => {
+
+                unsubscribe();
+
+                resolve(snapshot);
+              },
+              (error) => {
+
+                unsubscribe();
+
+                reject(error);
+              }
+            );
+        }
+      );
+
+    const duplicateRequest =
+      existingRequestsSnapshot.docs.some(
+        (document) => {
+
+          const data =
+            document.data();
+
+          // Same shift + same request type
+          if (
+            data.shiftID === shift.id &&
+            data.type === requestType
+          ) {
+
+            // For Shift Swap, also require
+            // the same employee and replacement shift.
+            if (
+              requestType === "Shift Swap"
+            ) {
+
+              return (
+                data.replacementEmployeeID ===
+                  swapEmployeeID &&
+                data.replacementShiftID ===
+                  swapShiftID
+              );
+
+            }
+
+            return true;
+          }
+
+          return false;
+        }
+      );
+
+    if (duplicateRequest) {
+
+      setError(
+        "You already have a pending request for this shift."
+      );
+
+      return;
+    }
 
     const requestID =
       crypto.randomUUID();
@@ -900,6 +1106,20 @@ proposedEnd:
 
         reason:
           reason.trim(),
+
+
+          replacementEmployeeID:
+  requestType === "Shift Swap"
+    ? swapEmployeeID
+    : null,
+
+replacementShiftID:
+  requestType === "Shift Swap"
+    ? swapShiftID
+    : null,
+
+reason:
+  reason.trim(),
 
         status:
           "pending",
@@ -996,19 +1216,17 @@ async function approveRequest(
     }
 
     const timetableEmployee =
-      employees.find(
-        (employee) =>
-          employee.name
-            .trim()
-            .toLowerCase() ===
-          employeeName
-      );
+  employees.find(
+    (employee) =>
+      employee.authUID ===
+      request.employeeID
+  );
 
     if (!timetableEmployee) {
 
       throw new Error(
-        `Could not find ${employeeName} in the timetable employees.`
-      );
+  "Could not find this employee in the timetable."
+);
     }
 
 
@@ -1091,6 +1309,70 @@ if (request.type === "Shift Change") {
   );
 }
 
+
+// -------------------------------------------------------
+// SHIFT SWAP
+// -------------------------------------------------------
+
+if (request.type === "Shift Swap") {
+
+  if (
+    !request.shiftID ||
+    !request.replacementShiftID
+  ) {
+    throw new Error(
+      "Shift Swap request is missing one of the shifts."
+    );
+  }
+
+  const requestedShift =
+    shifts.find(
+      (shift) =>
+        shift.id === request.shiftID
+    );
+
+  const replacementShift =
+    shifts.find(
+      (shift) =>
+        shift.id === request.replacementShiftID
+    );
+
+  if (!requestedShift || !replacementShift) {
+    throw new Error(
+      "One of the shifts in this swap could not be found."
+    );
+  }
+
+  await updateDoc(
+    doc(
+      db,
+      "shifts",
+      request.shiftID
+    ),
+    {
+      employeeID:
+        replacementShift.employeeID,
+
+      updatedAt:
+        serverTimestamp()
+    }
+  );
+
+  await updateDoc(
+    doc(
+      db,
+      "shifts",
+      request.replacementShiftID
+    ),
+    {
+      employeeID:
+        requestedShift.employeeID,
+
+      updatedAt:
+        serverTimestamp()
+    }
+  );
+}
 
 
 
@@ -1215,11 +1497,14 @@ async function rejectRequest(
   async function addEmployee() {
 
     const cleanName =
-      newEmployeeName.trim();
+  newEmployeeName.trim();
 
-    if (!cleanName) {
-      return;
-    }
+const cleanEmail =
+  newEmployeeEmail.trim();
+
+if (!cleanName || !cleanEmail) {
+  return;
+}
 
     try {
 
@@ -1233,18 +1518,20 @@ async function rejectRequest(
           id
         ),
         {
+  name:
+    cleanName,
 
-          name:
-            cleanName,
+  email:
+    cleanEmail,
 
-          createdAt:
-            serverTimestamp()
-
-        }
+  createdAt:
+    serverTimestamp()
+}
       );
 
       setNewEmployeeName("");
-      setShowAddEmployee(false);
+setNewEmployeeEmail("");
+setShowAddEmployee(false);
 
     } catch (err) {
 
@@ -1460,6 +1747,11 @@ async function rejectRequest(
         </div>
 
         <div className="user-area">
+          <button
+  onClick={enablePushNotifications}
+>
+  🔔 Enable Notifications
+</button>
 
           <span>
             {profile?.name ||
@@ -1550,6 +1842,20 @@ async function rejectRequest(
         >
           🔄 Requests
         </button>
+        <button
+  className={
+    activeTab === "notifications"
+      ? "nav-button active"
+      : "nav-button"
+  }
+  onClick={() =>
+    setActiveTab(
+      "notifications"
+    )
+  }
+>
+  🔔 Notifications
+</button>
 
       </nav>
 
@@ -1592,6 +1898,12 @@ async function rejectRequest(
           setNewEmployeeName={
             setNewEmployeeName
           }
+          newEmployeeEmail={
+  newEmployeeEmail
+}
+setNewEmployeeEmail={
+  setNewEmployeeEmail
+}
           addEmployee={
             addEmployee
           }
@@ -1636,16 +1948,31 @@ async function rejectRequest(
   />
 
 )}
+{activeTab === "notifications" && (
+
+  <NotificationsView
+    notifications={notifications}
+  />
+
+)}
 
 
       {/* SHIFT EDITOR */}
 
       {showEditor && (
 
-        <ShiftEditor
-          shift={selectedShift}
-          date={editorDate}
-          employees={employees}
+ <ShiftEditor
+
+  key={`${selectedShift?.id || "new"}-${editorDate.getTime()}-${editorDepartment}`}
+
+  shift={selectedShift}
+
+  date={editorDate}
+
+  defaultDepartment={editorDepartment}
+
+  employees={employees}
+
           onClose={() => {
 
             setShowEditor(false);
@@ -1659,6 +1986,690 @@ async function rejectRequest(
       )}
 
     </div>
+  );
+}
+// ============================================================
+// MANAGER DEPARTMENT WEEKLY TIMETABLE
+// ============================================================
+
+function ManagerDepartmentTimetable({
+  shifts,
+  employees,
+  openAddShift,
+  openEditShift
+}) {
+
+  const departments = [
+    "Bar",
+    "Sala",
+    "Pattini",
+    "Ricevimento"
+  ];
+
+  const [weekDate, setWeekDate] =
+    useState(new Date());
+
+    const [showPublishModal, setShowPublishModal] =
+  useState(false);
+  const [publishPeriod, setPublishPeriod] =
+  useState("this-week");
+ async function publishTimetable() {
+
+  try {
+
+    let publicationStart;
+    let publicationEnd;
+
+    if (publishPeriod === "this-week") {
+
+      publicationStart =
+        new Date(weekDates[0]);
+
+      publicationEnd =
+        new Date(weekDates[6]);
+
+    } else if (publishPeriod === "next-week") {
+
+      publicationStart =
+        new Date(weekDates[0]);
+
+      publicationStart.setDate(
+        publicationStart.getDate() + 7
+      );
+
+      publicationEnd =
+        new Date(publicationStart);
+
+      publicationEnd.setDate(
+        publicationEnd.getDate() + 6
+      );
+
+    } else if (publishPeriod === "two-weeks") {
+
+      publicationStart =
+        new Date(weekDates[0]);
+
+      publicationEnd =
+        new Date(weekDates[0]);
+
+      publicationEnd.setDate(
+        publicationEnd.getDate() + 13
+      );
+
+    } else if (publishPeriod === "this-month") {
+
+      publicationStart =
+        new Date(
+          weekDate.getFullYear(),
+          weekDate.getMonth(),
+          1
+        );
+
+      publicationEnd =
+        new Date(
+          weekDate.getFullYear(),
+          weekDate.getMonth() + 1,
+          0
+        );
+
+    }
+
+    publicationStart.setHours(
+      0, 0, 0, 0
+    );
+
+    publicationEnd.setHours(
+      23, 59, 59, 999
+    );
+    const periodText =
+  publicationStart.toLocaleDateString(
+    "en-US",
+    {
+      month: "long",
+      day: "numeric",
+      year: "numeric"
+    }
+  ) +
+  "–" +
+  publicationEnd.toLocaleDateString(
+    "en-US",
+    {
+      month: "long",
+      day: "numeric",
+      year: "numeric"
+    }
+  );
+
+const publicationRef =
+  await addDoc(
+    collection(db, "publications"),
+    {
+      type: publishPeriod,
+
+      startDate:
+        Timestamp.fromDate(
+          publicationStart
+        ),
+
+      endDate:
+        Timestamp.fromDate(
+          publicationEnd
+        ),
+
+      createdAt:
+        serverTimestamp()
+    }
+  );
+
+
+await addDoc(
+  collection(db, "notifications"),
+  {
+    type: "timetable_published",
+
+    title:
+      "Timetable Published",
+
+    message:
+  `The timetable for ${periodText} is now available.`,
+
+    publicationID:
+      publicationRef.id,
+
+    createdAt:
+      serverTimestamp(),
+
+    read: false
+  }
+);
+
+    setShowPublishModal(false);
+
+    alert("Timetable published");
+
+  } catch (error) {
+
+    console.error(
+      "Publish timetable error:",
+      error
+    );
+
+    alert(
+      `Publish error: ${error.message}`
+    );
+  }
+}
+
+  function getMonday(date) {
+
+    const result =
+      new Date(date);
+
+    const day =
+      result.getDay();
+
+    const difference =
+      day === 0
+        ? -6
+        : 1 - day;
+
+    result.setDate(
+      result.getDate() + difference
+    );
+
+    result.setHours(
+      0,
+      0,
+      0,
+      0
+    );
+
+    return result;
+  }
+
+  const weekStart =
+    getMonday(weekDate);
+
+  const weekDates =
+    Array.from(
+      { length: 7 },
+      (_, index) => {
+
+        const date =
+          new Date(weekStart);
+
+        date.setDate(
+          weekStart.getDate() + index
+        );
+
+        return date;
+      }
+    );
+
+  function goPreviousWeek() {
+
+    setWeekDate(
+      new Date(
+        weekDate.getFullYear(),
+        weekDate.getMonth(),
+        weekDate.getDate() - 7
+      )
+    );
+  }
+
+  function goNextWeek() {
+
+    setWeekDate(
+      new Date(
+        weekDate.getFullYear(),
+        weekDate.getMonth(),
+        weekDate.getDate() + 7
+      )
+    );
+  }
+
+  function goToday() {
+    setWeekDate(new Date());
+  }
+
+  function employeeName(employeeID) {
+
+    const employee =
+      employees.find(
+        (item) =>
+          item.id === employeeID
+      );
+
+    return employee?.name || "Employee";
+  }
+
+  function formatWeekTitle() {
+
+    const first =
+      weekDates[0];
+
+    const last =
+      weekDates[6];
+
+    const firstMonth =
+      first.toLocaleDateString(
+        "en-US",
+        {
+          month: "long"
+        }
+      );
+
+    const lastMonth =
+      last.toLocaleDateString(
+        "en-US",
+        {
+          month: "long"
+        }
+      );
+
+    if (
+      first.getMonth() ===
+      last.getMonth()
+    ) {
+
+      return `${firstMonth} ${first.getDate()}–${last.getDate()}, ${last.getFullYear()}`;
+
+    }
+
+    return `${firstMonth} ${first.getDate()} – ${lastMonth} ${last.getDate()}, ${last.getFullYear()}`;
+  }
+
+  return (
+    <main className="main-content">
+
+      <div className="page-header">
+
+        <div>
+
+          <h1>
+            Timetable
+          </h1>
+
+          <p>
+            Manage shifts by department
+          </p>
+
+        </div>
+
+      </div>
+
+
+      {/* WEEK NAVIGATION */}
+
+      <div className="month-navigation">
+
+        <button
+          onClick={goPreviousWeek}
+        >
+          ‹
+        </button>
+
+        <strong>
+          {formatWeekTitle()}
+        </strong>
+
+        <button
+          onClick={goNextWeek}
+        >
+          ›
+        </button>
+
+        <button
+          className="today-button"
+          onClick={goToday}
+        >
+          Today
+        </button>
+
+      </div>
+
+
+      {/* DEPARTMENT TABLE */}
+
+      <div className="table-wrapper">
+
+        <div className="timetable">
+
+          {/* HEADER */}
+
+          <div className="table-row table-header">
+
+            <div className="employee-column">
+              DEPARTMENT
+            </div>
+
+            {weekDates.map(
+              (date) => (
+
+                <div
+                  className={
+                    sameDay(
+                      date,
+                      new Date()
+                    )
+                      ? "day-column today"
+                      : "day-column"
+                  }
+                  key={
+                    date.toISOString()
+                  }
+                >
+
+                  <span>
+                    {date.toLocaleDateString(
+                      "en-US",
+                      {
+                        weekday:
+                          "short"
+                      }
+                    )}
+                  </span>
+
+                  <strong>
+                    {date.getDate()}
+                  </strong>
+
+                </div>
+
+              )
+            )}
+
+          </div>
+
+
+          {/* DEPARTMENT ROWS */}
+
+          {departments.map(
+            (department) => (
+
+              <div
+                className="table-row"
+                key={department}
+              >
+
+                {/* DEPARTMENT NAME */}
+
+                <div className="employee-column employee-name">
+
+                  {department}
+
+                </div>
+
+
+                {/* DAYS */}
+
+                {weekDates.map(
+                  (date) => {
+
+                    const dayShifts =
+                      shifts
+                        .filter(
+                          (shift) =>
+                            shift.department ===
+                              department &&
+                            sameDay(
+                              shift.date,
+                              date
+                            )
+                        )
+                        .sort(
+                          (a, b) =>
+                            a.start -
+                            b.start
+                        );
+
+                    return (
+
+                      <div
+                        className="day-column shift-cell"
+                        key={
+                          date.toISOString()
+                        }
+                      >
+
+                        {dayShifts.length > 0 ? (
+
+  <div className="shift-list">
+
+    {dayShifts.map(
+      (shift) => (
+
+        <button
+          key={shift.id}
+          className="shift-card"
+          onClick={() =>
+            openEditShift(shift)
+          }
+        >
+
+          <strong>
+            {
+              employeeName(
+                shift.employeeID
+              )
+            }
+          </strong>
+
+          <span>
+            {
+              minutesToTime(
+                shift.start
+              )
+            }
+            {"–"}
+            {
+              minutesToTime(
+                shift.end
+              )
+            }
+          </span>
+
+          <small>
+            {
+              durationText(
+                shift.start,
+                shift.end
+              )
+            }
+          </small>
+
+        </button>
+
+      )
+    )}
+
+    <button
+      className="empty-cell"
+      onClick={() =>
+        openAddShift(
+          date,
+          department
+        )
+      }
+    >
+      +
+    </button>
+
+  </div>
+
+) : (
+
+  <button
+    className="empty-cell"
+    onClick={() =>
+      openAddShift(
+        date,
+        department
+      )
+    }
+  >
+    +
+  </button>
+
+)}
+
+                      </div>
+
+                    );
+
+                  }
+                )}
+
+              </div>
+
+            )
+          )}
+
+        </div>
+
+      </div>
+
+
+     <div className="info-row">
+
+  <span>
+    {employees.length} employee
+    {employees.length !== 1
+      ? "s"
+      : ""}
+  </span>
+
+  <span>
+    Week view
+  </span>
+
+  <div className="info-actions">
+
+    <button
+  className="publish-button"
+  onClick={() =>
+    setShowPublishModal(true)
+  }
+>
+  📢 Publish Timetable
+</button>
+
+    <button
+      className="add-shift-button"
+      onClick={() =>
+        openAddShift(
+          new Date()
+        )
+      }
+    >
+      + Add Shift
+    </button>
+
+  </div>
+
+</div>
+{showPublishModal && (
+
+  <div className="modal-backdrop">
+
+    <div className="modal">
+
+      <div className="modal-header">
+
+        <div>
+
+          <h2>
+            Publish Timetable
+          </h2>
+
+          <p>
+            Choose the period you want to publish.
+          </p>
+
+        </div>
+
+        <button
+          className="close-button"
+          onClick={() =>
+            setShowPublishModal(false)
+          }
+        >
+          ×
+        </button>
+
+      </div>
+
+
+      <div className="form">
+
+        <label>
+          Timetable period
+
+          <select
+  value={publishPeriod}
+  onChange={(event) =>
+    setPublishPeriod(
+      event.target.value
+    )
+  }
+>
+
+            <option value="this-week">
+              This week
+            </option>
+
+            <option value="next-week">
+              Next week
+            </option>
+
+            <option value="two-weeks">
+              Next 2 weeks
+            </option>
+
+            <option value="this-month">
+              This month
+            </option>
+
+          </select>
+
+        </label>
+
+
+        <div className="form-actions">
+
+          <div />
+
+          <div className="right-actions">
+
+            <button
+              className="secondary-button"
+              onClick={() =>
+                setShowPublishModal(false)
+              }
+            >
+              Cancel
+            </button>
+
+            <button
+  className="primary-button"
+  onClick={publishTimetable}
+>
+  Publish
+</button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+)}
+
+    </main>
   );
 }
 
@@ -1679,6 +2690,18 @@ function TimetableView({
   openAddShift,
   openEditShift
 }) {
+    if (isManager) {
+
+    return (
+      <ManagerDepartmentTimetable
+        shifts={shifts}
+        employees={employees}
+        openAddShift={openAddShift}
+        openEditShift={openEditShift}
+      />
+    );
+
+  }
 
   return (
     <main className="main-content">
@@ -2016,6 +3039,8 @@ function EmployeesView({
   setShowAddEmployee,
   newEmployeeName,
   setNewEmployeeName,
+  newEmployeeEmail,
+  setNewEmployeeEmail,
   addEmployee,
   deleteEmployee
 }) {
@@ -2221,6 +3246,24 @@ function EmployeesView({
                 />
 
               </label>
+              <label>
+
+  Employee email
+
+  <input
+    type="email"
+    placeholder="e.g. mike@email.com"
+    value={
+      newEmployeeEmail
+    }
+    onChange={(event) =>
+      setNewEmployeeEmail(
+        event.target.value
+      )
+    }
+  />
+
+</label>
 
 
               <div className="form-actions">
@@ -2247,8 +3290,9 @@ function EmployeesView({
                   <button
                     className="primary-button"
                     disabled={
-                      !newEmployeeName.trim()
-                    }
+  !newEmployeeName.trim() ||
+  !newEmployeeEmail.trim()
+}
                     onClick={
                       addEmployee
                     }
@@ -2761,6 +3805,116 @@ function employeeName(employeeID) {
                     </span>
 
                   </div>
+                  {request.type === "Shift Swap" && (
+
+  <div className="request-date">
+
+    <strong>
+      {isManager
+        ? `${employeeName(request.employeeID)}'s shift`
+        : "Your shift"}
+    </strong>
+
+    <span>
+      {(() => {
+
+        const ownShift =
+          shifts.find(
+            (shift) =>
+              shift.id ===
+              request.shiftID
+          );
+
+        if (!ownShift) {
+          return "—";
+        }
+
+        return (
+          <>
+            {formatRequestDate(
+              ownShift.date
+            )}
+            {" · "}
+            {minutesToTime(
+              ownShift.start
+            )}
+            {"–"}
+            {minutesToTime(
+              ownShift.end
+            )}
+            {" · "}
+            {ownShift.department}
+          </>
+        );
+
+      })()}
+    </span>
+
+
+    <strong>
+      Swap with
+    </strong>
+
+    <span>
+      {(() => {
+
+        const replacementEmployee =
+          employees.find(
+            (employee) =>
+              employee.id ===
+              request.replacementEmployeeID
+          );
+
+        return replacementEmployee
+          ? replacementEmployee.name
+          : "—";
+
+      })()}
+    </span>
+
+
+    <strong>
+      Their shift
+    </strong>
+
+    <span>
+      {(() => {
+
+        const replacementShift =
+          shifts.find(
+            (shift) =>
+              shift.id ===
+              request.replacementShiftID
+          );
+
+        if (!replacementShift) {
+          return "—";
+        }
+
+        return (
+          <>
+            {formatRequestDate(
+              replacementShift.date
+            )}
+            {" · "}
+            {minutesToTime(
+              replacementShift.start
+            )}
+            {"–"}
+            {minutesToTime(
+              replacementShift.end
+            )}
+            {" · "}
+            {replacementShift.department}
+          </>
+        );
+
+      })()}
+    </span>
+
+  </div>
+
+)}
                   {isManager &&
   request.type === "Shift Change" && (
 
@@ -2922,8 +4076,9 @@ function employeeName(employeeID) {
 
   <NewDayOffRequest
   shifts={shiftsForUser}
-    employees={employees}
-    user={user}
+  allShifts={shifts}
+  employees={employees}
+  user={user}
     onClose={() =>
       setShowNewRequest(
         false
@@ -2935,6 +4090,8 @@ function employeeName(employeeID) {
     requestType,
     newStart,
     newEnd,
+    swapEmployeeID,
+    swapShiftID,
     reason
   }) => {
 
@@ -2943,6 +4100,8 @@ function employeeName(employeeID) {
       requestType,
       newStart,
       newEnd,
+      swapEmployeeID,
+      swapShiftID,
       reason
     });
 
@@ -3010,21 +4169,132 @@ function employeeName(employeeID) {
 
               <div className="form">
 
-                <div className="decision-information">
+               {selectedRequest.type === "Shift Swap" ? (
 
-                  <strong>
-                    Requested date
-                  </strong>
+  <div className="decision-information">
 
-                  <span>
-                    {
-                      formatRequestDate(
-                        selectedRequest.requestedDate
-                      )
-                    }
-                  </span>
+    <strong>
+      {employeeName(selectedRequest.employeeID)}'s shift
+    </strong>
 
-                </div>
+    <span>
+      {(() => {
+
+        const ownShift =
+          shifts.find(
+            (shift) =>
+              shift.id ===
+              selectedRequest.shiftID
+          );
+
+        if (!ownShift) {
+          return "—";
+        }
+
+        return (
+          <>
+            {formatRequestDate(
+              ownShift.date
+            )}
+            {" · "}
+            {minutesToTime(
+              ownShift.start
+            )}
+            {"–"}
+            {minutesToTime(
+              ownShift.end
+            )}
+            {" · "}
+            {ownShift.department}
+          </>
+        );
+
+      })()}
+    </span>
+
+
+    <strong>
+      Swap with
+    </strong>
+
+    <span>
+      {(() => {
+
+        const replacementEmployee =
+          employees.find(
+            (employee) =>
+              employee.id ===
+              selectedRequest.replacementEmployeeID
+          );
+
+        return replacementEmployee
+          ? replacementEmployee.name
+          : "—";
+
+      })()}
+    </span>
+
+
+    <strong>
+      Their shift
+    </strong>
+
+    <span>
+      {(() => {
+
+        const replacementShift =
+          shifts.find(
+            (shift) =>
+              shift.id ===
+              selectedRequest.replacementShiftID
+          );
+
+        if (!replacementShift) {
+          return "—";
+        }
+
+        return (
+          <>
+            {formatRequestDate(
+              replacementShift.date
+            )}
+            {" · "}
+            {minutesToTime(
+              replacementShift.start
+            )}
+            {"–"}
+            {minutesToTime(
+              replacementShift.end
+            )}
+            {" · "}
+            {replacementShift.department}
+          </>
+        );
+
+      })()}
+    </span>
+
+  </div>
+
+) : (
+
+  <div className="decision-information">
+
+    <strong>
+      Requested date
+    </strong>
+
+    <span>
+      {
+        formatRequestDate(
+          selectedRequest.requestedDate
+        )
+      }
+    </span>
+
+  </div>
+
+)}
 
 
                 <label>
@@ -3112,6 +4382,7 @@ function employeeName(employeeID) {
 function NewDayOffRequest({
   
   shifts,
+  allShifts,
   employees,
   user,
   onClose,
@@ -3142,7 +4413,7 @@ const [newEnd, setNewEnd] =
         shift.id === selectedShiftID
     );
     const swapShifts =
-  shifts
+  allShifts
     .filter(
       (shift) =>
         shift.employeeID ===
@@ -3194,8 +4465,12 @@ const [newEnd, setNewEnd] =
 
   newEnd,
 
+  swapEmployeeID,
+
+  swapShiftID,
+
   reason
-      });
+});
 
     } finally {
 
@@ -3611,6 +4886,13 @@ const [newEnd, setNewEnd] =
       newEnd === null ||
       newStart === newEnd
     )
+  ) ||
+  (
+    requestType === "Shift Swap" &&
+    (
+      !swapEmployeeID ||
+      !swapShiftID
+    )
   )
 }
                 >
@@ -3636,6 +4918,105 @@ const [newEnd, setNewEnd] =
 }
 
 
+function NotificationsView({
+  notifications
+}) {
+
+  return (
+    <main className="section-content">
+
+      <div className="section-heading">
+
+        <div>
+
+          <h1>
+            Notifications
+          </h1>
+
+          <p>
+            Updates from VOLUME
+          </p>
+
+        </div>
+
+      </div>
+
+
+      {notifications.length === 0 ? (
+
+        <div className="empty-panel">
+
+          <div className="coming-icon">
+            🔔
+          </div>
+
+          <h3>
+            No notifications
+          </h3>
+
+          <p>
+            You're all caught up.
+          </p>
+
+        </div>
+
+      ) : (
+
+        <div className="requests-list">
+
+          {notifications.map(
+            (notification) => (
+
+              <div
+                className="request-card"
+                key={notification.id}
+              >
+
+                <div className="request-main">
+
+                  <div className="request-top">
+
+                    <div>
+
+                      <span className="request-type">
+                        {notification.type ===
+                        "timetable_published"
+                          ? "Timetable"
+                          : "VOLUME"}
+                      </span>
+
+                      <h3>
+                        {notification.title}
+                      </h3>
+
+                    </div>
+
+                  </div>
+
+
+                  <div className="request-reason">
+
+                    <p>
+                      {notification.message}
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            )
+          )}
+
+        </div>
+
+      )}
+
+    </main>
+  );
+}
+
 
 // ============================================================
 // SHIFT EDITOR
@@ -3644,6 +5025,7 @@ const [newEnd, setNewEnd] =
 function ShiftEditor({
   shift,
   date,
+  defaultDepartment,
   employees,
   onClose,
   onSave,
@@ -3674,10 +5056,12 @@ function ShiftEditor({
       shift?.end ?? 1320
     );
 
-  const [department, setDepartment] =
-    useState(
-      shift?.department || "Bar"
-    );
+ const [department, setDepartment] =
+  useState(
+    shift?.department ||
+    defaultDepartment ||
+    "Bar"
+  );
 
 
   function save() {
@@ -3790,38 +5174,12 @@ function ShiftEditor({
 
 
           <label>
+  Department
 
-            Department
-
-            <select
-              value={department}
-              onChange={(event) =>
-                setDepartment(
-                  event.target.value
-                )
-              }
-            >
-
-              <option>
-                Bar
-              </option>
-
-              <option>
-                Sala
-              </option>
-
-              <option>
-                Pattini
-              </option>
-
-              <option>
-                Ricevimento
-              </option>
-
-            </select>
-
-          </label>
-
+  <div className="readonly-field">
+    {department}
+  </div>
+</label>
 
           <label>
 
@@ -3918,36 +5276,25 @@ function ShiftEditor({
               >
                 Save
               </button>
-
             </div>
-
           </div>
-
         </div>
-
       </div>
-
     </div>
   );
 }
-
-
 // ============================================================
 // TIME OPTIONS
 // ============================================================
 
 function TimeOptions() {
-
   const options = [];
-
   for (
     let minute = 0;
     minute < 1440;
     minute += 30
   ) {
-
     options.push(
-
       <option
         value={minute}
         key={minute}
@@ -3957,9 +5304,6 @@ function TimeOptions() {
 
     );
   }
-
   return options;
 }
-
-
 export default App;
