@@ -209,7 +209,7 @@ const token = await getToken(messaging, {
         return;
       }
 
-      await setDoc(
+await setDoc(
   doc(
     db,
     "users",
@@ -219,6 +219,8 @@ const token = await getToken(messaging, {
   ),
   {
     token,
+    platform: "web",
+    userAgent: navigator.userAgent,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   },
