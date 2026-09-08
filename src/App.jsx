@@ -162,9 +162,14 @@ const [notifications, setNotifications] =
         return;
       }
 
-      const token = await getToken(messaging, {
-        vapidKey: "BNubueUytLgOiGi5nKi9X7cnpv-GwgQGAHoVjTFc-O_pTrMXz7tms67L5GkzXlAbPwBfBegnDvQ6xCAzrIaHeO4"
-      });
+      const registration = await navigator.serviceWorker.register(
+  "/volume-pwa/firebase-messaging-sw.js"
+);
+
+const token = await getToken(messaging, {
+  vapidKey: "BNubueUytLgOiGi5nKi9X7cnpv-GwgQGAHoVjTFc-O_pTrMXz7tms67L5GkzXlAbPwBfBegnDvQ6xCAzrIaHeO4",
+  serviceWorkerRegistration: registration
+});
 
       if (!token) {
         console.log("Could not get FCM token.");
