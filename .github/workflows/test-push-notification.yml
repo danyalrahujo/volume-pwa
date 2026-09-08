@@ -1,0 +1,47 @@
+name: Test VOLUME Push Notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_uid:
+        description: "Employee Firebase UID"
+        required: true
+        type: string
+      title:
+        description: "Notification title"
+        required: true
+        default: "VOLUME Test Notification"
+        type: string
+      message:
+        description: "Notification message"
+        required: true
+        default: "This is a test notification from VOLUME."
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  send-notification:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Send notification
+        run: node scripts/sendNotification.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          TARGET_UID: ${{ inputs.target_uid }}
+          NOTIFICATION_TITLE: ${{ inputs.title }}
+          NOTIFICATION_MESSAGE: ${{ inputs.message }}
