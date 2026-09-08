@@ -128,6 +128,39 @@ const [notifications, setNotifications] =
 
   const [activeTab, setActiveTab] =
     useState("timetable");
+    useEffect(() => {
+  const handleServiceWorkerMessage = (event) => {
+    if (event.data?.type === "VOLUME_NOTIFICATION_OPEN") {
+      setActiveTab("timetable");
+    }
+  };
+
+  navigator.serviceWorker?.addEventListener(
+    "message",
+    handleServiceWorkerMessage
+  );
+
+  return () => {
+    navigator.serviceWorker?.removeEventListener(
+      "message",
+      handleServiceWorkerMessage
+    );
+  };
+}, []);
+    useEffect(() => {
+  const handleNotificationOpen = () => {
+    setActiveTab("timetable");
+  };
+
+  window.addEventListener("volume-notification-open", handleNotificationOpen);
+
+  return () => {
+    window.removeEventListener(
+      "volume-notification-open",
+      handleNotificationOpen
+    );
+  };
+}, []);
 
   const [selectedShift, setSelectedShift] =
     useState(null);

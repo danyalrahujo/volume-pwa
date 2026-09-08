@@ -48,8 +48,14 @@ self.addEventListener("notificationclick", (event) => {
     }).then((clientList) => {
       for (const client of clientList) {
         if (client.url.includes("/volume-pwa/") && "focus" in client) {
-          return client.focus();
-        }
+  client.focus();
+
+  client.postMessage({
+    type: "VOLUME_NOTIFICATION_OPEN"
+  });
+
+  return;
+}
       }
 
       if (clients.openWindow) {
