@@ -26,11 +26,37 @@ messaging.onBackgroundMessage((payload) => {
     body:
       payload.notification?.body ||
       "You have a new VOLUME notification.",
-    icon: "/pwa-192x192.png"
+    icon: "/volume-pwa/pwa-192x192.png",
+    data: {
+      url: "/volume-pwa/"
+    }
   };
 
   self.registration.showNotification(
     notificationTitle,
     notificationOptions
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  event.waitUntil(
+    clients.matchAll({
+      type: "window",
+      includeUncontrolled: true
+    }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes("/volume-pwa/") && "focus" in client) {
+          return client.focus();
+        }
+      }
+
+      if (clients.openWindow) {
+        return clients.openWindow(
+          "https://danyalrahujo.github.io/volume-pwa/"
+        );
+      }
+    })
   );
 });
