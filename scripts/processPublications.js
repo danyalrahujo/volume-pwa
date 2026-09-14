@@ -71,12 +71,12 @@ async function processPublications() {
       .get();
 
     const newPublications = publicationsSnapshot.docs.filter(
-      (publicationDoc) => {
-        const data = publicationDoc.data();
+  (publicationDoc) => {
+    const data = publicationDoc.data();
 
-        return !data.pushSentAt;
-      }
-    );
+    return data.pushStatus === "pending";
+  }
+);
 
     if (newPublications.length === 0) {
       console.log("No new publications to process.");
@@ -127,8 +127,9 @@ async function processPublications() {
       );
 
       await publicationDoc.ref.update({
-        pushSentAt: Timestamp.now()
-      });
+  pushStatus: "sent",
+  pushSentAt: Timestamp.now()
+});
 
       console.log(
         `Publication ${publicationDoc.id} marked as notified.`

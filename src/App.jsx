@@ -2140,26 +2140,13 @@ function ManagerDepartmentTimetable({
     }
   );
 
-const publicationRef =
-  await addDoc(
-    collection(db, "publications"),
-    {
-      type: publishPeriod,
-
-      startDate:
-        Timestamp.fromDate(
-          publicationStart
-        ),
-
-      endDate:
-        Timestamp.fromDate(
-          publicationEnd
-        ),
-
-      createdAt:
-        serverTimestamp()
-    }
-  );
+const publicationRef = await addDoc(collection(db, "publications"), {
+  type: publishPeriod,
+  startDate: Timestamp.fromDate(publicationStart),
+  endDate: Timestamp.fromDate(publicationEnd),
+  createdAt: serverTimestamp(),
+  pushStatus: "pending"
+});
 
 
 await addDoc(
