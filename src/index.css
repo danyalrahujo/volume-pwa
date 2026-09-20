@@ -1522,3 +1522,320 @@ button {
   }
 
 }
+
+/* ============================================================
+   FINAL MOBILE HEADER POLISH
+   ============================================================ */
+
+@media (max-width: 700px) {
+
+  .top-bar {
+    min-height: auto;
+
+    padding: 10px 12px;
+
+    flex-direction: column;
+    align-items: stretch;
+
+    gap: 8px;
+  }
+
+  .brand {
+    justify-content: center;
+  }
+
+  .brand strong {
+    font-size: 20px;
+  }
+
+  .user-area {
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    overflow-x: auto;
+
+    padding-bottom: 2px;
+
+    -webkit-overflow-scrolling: touch;
+
+    scrollbar-width: none;
+  }
+
+  .user-area::-webkit-scrollbar {
+    display: none;
+  }
+
+  .user-area button {
+    flex-shrink: 0;
+
+    padding: 7px 10px;
+
+    font-size: 13px;
+  }
+
+  .user-area .role {
+    flex-shrink: 0;
+  }
+
+  .user-area span:first-of-type {
+    display: inline;
+    flex-shrink: 0;
+  }
+
+  .main-navigation {
+    overflow-x: auto;
+
+    -webkit-overflow-scrolling: touch;
+
+    scrollbar-width: none;
+  }
+
+  .main-navigation::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-button {
+    flex-shrink: 0;
+  }
+
+}
+
+/* ============================================================
+   BUTTON UI CONSISTENCY
+   ============================================================ */
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid #d5d5d5;
+  border-radius: 12px;
+  background: white;
+  color: #111;
+  font-size: 16px;
+  font-weight: 500;
+  padding: 10px 16px;
+  min-height: 44px;
+  box-sizing: border-box;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+button:hover {
+  background: #f5f5f5;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Main navigation buttons */
+
+.nav-button {
+  white-space: nowrap;
+  min-height: 48px;
+  padding: 10px 18px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-weight: 600;
+}
+
+.nav-button:hover {
+  background: #f1f1f1;
+}
+
+.nav-button.active {
+  background: #111;
+  color: white;
+  border-color: #111;
+}
+
+/* Main action buttons */
+
+.publish-button,
+.add-shift-button {
+  min-height: 46px;
+  border-radius: 14px;
+  font-weight: 600;
+}
+
+/* Manager primary action */
+
+.add-shift-button {
+  background: #111;
+  color: white;
+  border-color: #111;
+}
+
+.add-shift-button:hover {
+  background: #222;
+}
+
+/* Publish action */
+
+.publish-button {
+  background: white;
+  color: #111;
+  border-color: #cfcfcf;
+}
+
+.publish-button:hover {
+  background: #f5f5f5;
+}
+/* ============================================================
+   REQUEST TYPE BUTTONS
+   ============================================================ */
+
+.request-type-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.request-type-option,
+.selected-request-type {
+  width: 100%;
+  min-height: 64px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+
+  gap: 4px;
+
+  padding: 12px 14px;
+
+  text-align: left;
+
+  border: 1px solid #d9d9d9;
+  border-radius: 10px;
+
+  background: #fff;
+
+  cursor: pointer;
+
+  box-sizing: border-box;
+}
+
+.request-type-option span,
+.selected-request-type span {
+  display: block;
+
+  font-size: 15px;
+  font-weight: 600;
+
+  line-height: 1.2;
+}
+
+.request-type-option small,
+.selected-request-type small {
+  display: block;
+
+  font-size: 12px;
+  line-height: 1.3;
+
+  color: #777;
+}
+
+.selected-request-type {
+  border-color: #111;
+  background: #111;
+  color: #fff;
+}
+
+.selected-request-type small {
+  color: #d6d6d6;
+}
+
+.request-type-option:hover {
+  border-color: #999;
+  background: #f7f7f7;
+}
+/* ============================================================
+   TIMETABLE ACTION BUTTONS
+   ============================================================ */
+
+.info-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.publish-button,
+.add-shift-button {
+  height: 42px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 18px;
+
+  border-radius: 10px;
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  box-sizing: border-box;
+}
+
+/* Secondary action */
+.publish-button {
+  background: #fff;
+  color: #111;
+
+  border: 1px solid #cfcfcf;
+}
+
+/* Primary action */
+.add-shift-button {
+  background: #111;
+  color: #fff;
+
+  border: 1px solid #111;
+}
+
+/* Hover */
+.publish-button:hover {
+  background: #f5f5f5;
+}
+
+.add-shift-button:hover {
+  background: #222;
+}
+
+/* Mobile */
+@media (max-width: 700px) {
+
+  .info-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .publish-button,
+  .add-shift-button {
+    width: 100%;
+    height: 52px;
+
+    font-size: 16px;
+  }
+
+}
