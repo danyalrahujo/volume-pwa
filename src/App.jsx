@@ -2186,6 +2186,22 @@ await addDoc(
     );
   }
 }
+function shareTimetableOnWhatsApp() {
+  const message =
+    `📅 VOLUME TIMETABLE\n\n` +
+    `The timetable is now available.\n\n` +
+    `Open the timetable:\n` +
+    `https://danyalrahujo.github.io/volume-pwa/`;
+
+  const whatsappURL =
+    `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+  window.open(
+    whatsappURL,
+    "_blank",
+    "noopener,noreferrer"
+  );
+}
 
   function getMonday(date) {
 
@@ -2579,6 +2595,13 @@ await addDoc(
   }
 >
   📢 Publish Timetable
+</button>
+
+<button
+  className="whatsapp-button"
+  onClick={shareTimetableOnWhatsApp}
+>
+  🟢 Share on WhatsApp
 </button>
 
     <button
