@@ -1014,176 +1014,70 @@ async function createDayOffRequest({
   swapShiftID,
   reason
 }) {
-
   if (!user || !shift) {
     return;
   }
 
   try {
-
-    // -------------------------------------------------------
-    // Prevent duplicate pending requests
-    // -------------------------------------------------------
-
-    const existingRequestsSnapshot =
-      await new Promise(
-        (resolve, reject) => {
-
-          const unsubscribe =
-            onSnapshot(
-              query(
-                collection(
-                  db,
-                  "requests"
-                ),
-                where(
-                  "employeeID",
-                  "==",
-                  user.uid
-                ),
-                where(
-                  "status",
-                  "==",
-                  "pending"
-                )
-              ),
-              (snapshot) => {
-
-                unsubscribe();
-
-                resolve(snapshot);
-              },
-              (error) => {
-
-                unsubscribe();
-
-                reject(error);
-              }
-            );
+    const existingRequestsSnapshot = await new Promise((resolve, reject) => {
+      const unsubscribe = onSnapshot(
+        query(
+          collection(db, "requests"),
+          where("employeeID", "==", user.uid),
+          where("status", "==", "pending")
+        ),
+        (snapshot) => {
+          unsubscribe();
+          resolve(snapshot);
+        },
+        (error) => {
+          unsubscribe();
+          reject(error);
         }
       );
+    });
 
-    const duplicateRequest =
-      existingRequestsSnapshot.docs.some(
-        (document) => {
-
-          const data =
-            document.data();
-
-          // Same shift + same request type
-          if (
-            data.shiftID === shift.id &&
-            data.type === requestType
-          ) {
-
-            // For Shift Swap, also require
-            // the same employee and replacement shift.
-            if (
-              requestType === "Shift Swap"
-            ) {
-
-              return (
-                data.replacementEmployeeID ===
-                  swapEmployeeID &&
-                data.replacementShiftID ===
-                  swapShiftID
-              );
-
-            }
-
-            return true;
-          }
-
-          return false;
+    const duplicateRequest = existingRequestsSnapshot.docs.some((document) => {
+      const data = document.data();
+      if (data.shiftID === shift.id && data.type === requestType) {
+        if (requestType === "Shift Swap") {
+          return (
+            data.replacementEmployeeID === swapEmployeeID &&
+            data.replacementShiftID === swapShiftID
+          );
         }
-      );
+        return true;
+      }
+      return false;
+    });
 
     if (duplicateRequest) {
-
-      setError(
-        "You already have a pending request for this shift."
-      );
-
+      setError("You already have a pending request for this shift.");
       return;
     }
 
-    const requestID =
-      crypto.randomUUID();
+    const requestID = crypto.randomUUID();
 
-    await setDoc(
-      doc(
-        db,
-        "requests",
-        requestID
-      ),
-      {
-
-        employeeID:
-          user.uid,
-
-        type:
-          requestType,
-
-        shiftID:
-          shift.id,
-
-        requestedDate:
-          Timestamp.fromDate(
-            startOfDay(
-              shift.date
-            )
-          ),
-
-        proposedStart:
-  requestType === "Shift Change"
-    ? newStart
-    : shift.start,
-
-proposedEnd:
-  requestType === "Shift Change"
-    ? newEnd
-    : shift.end,
-
-        reason:
-          reason.trim(),
-
-
-          replacementEmployeeID:
-  requestType === "Shift Swap"
-    ? swapEmployeeID
-    : null,
-
-replacementShiftID:
-  requestType === "Shift Swap"
-    ? swapShiftID
-    : null,
-
-reason:
-  reason.trim(),
-
-        status:
-          "pending",
-
-        createdAt:
-          serverTimestamp()
-
-      }
-    );
-
+    await setDoc(doc(db, "requests", requestID), {
+      employeeID: user.uid,
+      type: requestType,
+      shiftID: shift.id,
+      requestedDate: Timestamp.fromDate(startOfDay(shift.date)),
+      proposedStart: requestType === "Shift Change" ? newStart : shift.start,
+      proposedEnd: requestType === "Shift Change" ? newEnd : shift.end,
+      replacementEmployeeID: requestType === "Shift Swap" ? swapEmployeeID : null,
+      replacementShiftID: requestType === "Shift Swap" ? swapShiftID : null,
+      reason: reason.trim(),
+      status: "pending",
+      createdAt: serverTimestamp()
+    });
   } catch (err) {
-
-    console.error(
-      "Create request error:",
-      err
-    );
-
-    setError(
-      "Could not submit request."
-    );
-
+    console.error("Create request error:", err);
+    setError("Could not submit request.");
     throw err;
   }
 }
+
 
 // ==========================================================
 // APPROVE REQUEST
@@ -2036,6 +1930,7 @@ function ManagerDepartmentTimetable({
   shifts,
   employees,
   openAddShift,
+  isManager,
   openEditShift
 }) {
 
@@ -2478,81 +2373,58 @@ function shareTimetableOnWhatsApp() {
                         {dayShifts.length > 0 ? (
 
   <div className="shift-list">
+{dayShifts.map((shift) => (
+  <button
+    key={shift.id}
+    className="shift-card"
+    onClick={() => {
+      if (isManager) {
+        openEditShift(shift);
+      } else {
+        alert("Only managers can edit shifts directly. Use the Requests tab to submit changes.");
+      }
+    }}
+  >
+    <strong>{employeeName(shift.employeeID)}</strong>
+    <span>
+      {minutesToTime(shift.start)}–{minutesToTime(shift.end)}
+    </span>
+    <small>{durationText(shift.start, shift.end)}</small>
+  </button>
+))}
 
-    {dayShifts.map(
-      (shift) => (
-
-        <button
-          key={shift.id}
-          className="shift-card"
-          onClick={() =>
-            openEditShift(shift)
-          }
-        >
-
-          <strong>
-            {
-              employeeName(
-                shift.employeeID
-              )
-            }
-          </strong>
-
-          <span>
-            {
-              minutesToTime(
-                shift.start
-              )
-            }
-            {"–"}
-            {
-              minutesToTime(
-                shift.end
-              )
-            }
-          </span>
-
-          <small>
-            {
-              durationText(
-                shift.start,
-                shift.end
-              )
-            }
-          </small>
-
-        </button>
-
-      )
-    )}
 
     <button
-      className="empty-cell"
-      onClick={() =>
-        openAddShift(
-          date,
-          department
-        )
-      }
-    >
-      +
-    </button>
+  className="empty-cell"
+  onClick={() => {
+    if (isManager) {
+      openAddShift(date, department);
+    } else {
+      alert("Only managers can add new shifts.");
+    }
+  }}
+>
+  +
+</button>
+
 
   </div>
 
 ) : (
 
   <button
-    className="empty-cell"
-    onClick={() =>
-      openAddShift(
-        date,
-        department
-      )
+  className="empty-cell"
+  onClick={() => {
+    if (isManager) {
+      openAddShift(date, department);
+    } else {
+      alert("Only managers can add new shifts.");
     }
-  >
-    +
-  </button>
+  }}
+>
+  +
+</button>
+
 
 )}
 
@@ -2588,34 +2460,41 @@ function shareTimetableOnWhatsApp() {
 
   <div className="info-actions">
 
-    <button
-  className="publish-button"
-  onClick={() =>
-    setShowPublishModal(true)
-  }
->
-  📢 Publish Timetable
-</button>
-
-<button
-  className="whatsapp-button"
-  onClick={shareTimetableOnWhatsApp}
->
-  🟢 Share on WhatsApp
-</button>
-
-    <button
-      className="add-shift-button"
-      onClick={() =>
-        openAddShift(
-          new Date()
-        )
+  <button
+    className="publish-button"
+    onClick={() => {
+      if (isManager) {
+        setShowPublishModal(true);
+      } else {
+        alert("Only managers can publish timetables.");
       }
-    >
-      + Add Shift
-    </button>
+    }}
+  >
+    📢 Publish Timetable
+  </button>
 
-  </div>
+  <button
+    className="whatsapp-button"
+    onClick={shareTimetableOnWhatsApp}
+  >
+    🟢 Share on WhatsApp
+  </button>
+
+  <button
+    className="add-shift-button"
+    onClick={() => {
+      if (isManager) {
+        openAddShift(new Date());
+      } else {
+        alert("Only managers can add new shifts.");
+      }
+    }}
+  >
+    + Add Shift
+  </button>
+
+</div>
+
 
 </div>
 {showPublishModal && (
@@ -2723,7 +2602,6 @@ function shareTimetableOnWhatsApp() {
   );
 }
 
-
 // ============================================================
 // TIMETABLE VIEW
 // ============================================================
@@ -2740,341 +2618,18 @@ function TimetableView({
   openAddShift,
   openEditShift
 }) {
-    if (isManager) {
-
-    return (
-      <ManagerDepartmentTimetable
-        shifts={shifts}
-        employees={employees}
-        openAddShift={openAddShift}
-        openEditShift={openEditShift}
-      />
-    );
-
-  }
-
+  // Both Employees and Managers now use the Weekly Department Timetable view
   return (
-    <main className="main-content">
-
-      <div className="page-header">
-
-        <div>
-
-          <h1>
-            Timetable
-          </h1>
-
-          <p>
-            {profile?.name
-              ? `Welcome, ${profile.name}`
-              : ""}
-          </p>
-
-        </div>
-
-        {dataLoading && (
-          <span className="sync-text">
-            Loading...
-          </span>
-        )}
-
-      </div>
-
-
-      {/* MONTH NAVIGATION */}
-
-      <div className="month-navigation">
-
-        <button
-          onClick={() =>
-            setMonth(
-              new Date(
-                month.getFullYear(),
-                month.getMonth() - 1,
-                1
-              )
-            )
-          }
-        >
-          ‹
-        </button>
-
-        <strong>
-          {month.toLocaleDateString(
-            "en-US",
-            {
-              month: "long",
-              year: "numeric"
-            }
-          )}
-        </strong>
-
-        <button
-          onClick={() =>
-            setMonth(
-              new Date(
-                month.getFullYear(),
-                month.getMonth() + 1,
-                1
-              )
-            )
-          }
-        >
-          ›
-        </button>
-
-        <button
-          className="today-button"
-          onClick={() =>
-            setMonth(new Date())
-          }
-        >
-          Today
-        </button>
-
-      </div>
-
-
-      {/* TABLE */}
-
-      <div className="table-wrapper">
-
-        <div className="timetable">
-
-          <div className="table-row table-header">
-
-            <div className="employee-column">
-              EMPLOYEE
-            </div>
-
-            {monthDates.map(
-              (date) => (
-
-                <div
-                  className={
-                    sameDay(
-                      date,
-                      new Date()
-                    )
-                      ? "day-column today"
-                      : "day-column"
-                  }
-                  key={
-                    date.toISOString()
-                  }
-                >
-
-                  <span>
-                    {date.toLocaleDateString(
-                      "en-US",
-                      {
-                        weekday:
-                          "short"
-                      }
-                    )}
-                  </span>
-
-                  <strong>
-                    {date.getDate()}
-                  </strong>
-
-                </div>
-
-              )
-            )}
-
-          </div>
-
-
-          {employees.length === 0 ? (
-
-            <div className="empty-state">
-              No employees yet.
-            </div>
-
-          ) : (
-
-            employees.map(
-              (employee) => (
-
-                <div
-                  className="table-row"
-                  key={employee.id}
-                >
-
-                  <div className="employee-column employee-name">
-                    {employee.name}
-                  </div>
-
-                  {monthDates.map(
-                    (date) => {
-
-                      const dayShifts =
-                        shifts
-                          .filter(
-                            (shift) =>
-                              shift.employeeID ===
-                                employee.id &&
-                              sameDay(
-                                shift.date,
-                                date
-                              )
-                          )
-                          .sort(
-                            (a, b) =>
-                              a.start -
-                              b.start
-                          );
-
-                      return (
-
-                        <div
-                          className="day-column shift-cell"
-                          key={
-                            date.toISOString()
-                          }
-                        >
-
-                          {dayShifts.length >
-                          0 ? (
-
-                            <div className="shift-list">
-
-                              {dayShifts.map(
-                                (shift) => (
-
-                                  <button
-                                    key={
-                                      shift.id
-                                    }
-                                    className="shift-card"
-                                    onClick={() =>
-                                      isManager &&
-                                      openEditShift(
-                                        shift
-                                      )
-                                    }
-                                    disabled={
-                                      !isManager
-                                    }
-                                  >
-
-                                    <strong>
-                                      {
-                                        minutesToTime(
-                                          shift.start
-                                        )
-                                      }
-                                      {"–"}
-                                      {
-                                        minutesToTime(
-                                          shift.end
-                                        )
-                                      }
-                                    </strong>
-
-                                    <span>
-                                      {
-                                        shift.department
-                                      }
-                                    </span>
-
-                                    <small>
-                                      {
-                                        durationText(
-                                          shift.start,
-                                          shift.end
-                                        )
-                                      }
-                                    </small>
-
-                                  </button>
-
-                                )
-                              )}
-
-                            </div>
-
-                          ) : (
-
-                            isManager ? (
-
-                              <button
-                                className="empty-cell"
-                                onClick={() =>
-                                  openAddShift(
-                                    date
-                                  )
-                                }
-                              >
-                                +
-                              </button>
-
-                            ) : (
-
-                              <span className="dash">
-                                —
-                              </span>
-
-                            )
-                          )}
-
-                        </div>
-
-                      );
-                    }
-                  )}
-
-                </div>
-
-              )
-            )
-          )}
-
-        </div>
-
-      </div>
-
-
-      <div className="info-row">
-
-        <span>
-          {employees.length} employee
-          {employees.length !== 1
-            ? "s"
-            : ""}
-        </span>
-
-        <span>
-          {shifts.filter(
-            (shift) =>
-              shift.date.getMonth() ===
-                month.getMonth() &&
-              shift.date.getFullYear() ===
-                month.getFullYear()
-          ).length} shifts
-        </span>
-
-        {isManager && (
-
-          <button
-            className="add-shift-button"
-            onClick={() =>
-              openAddShift(
-                new Date()
-              )
-            }
-          >
-            + Add Shift
-          </button>
-
-        )}
-
-      </div>
-
-    </main>
+    <ManagerDepartmentTimetable
+      shifts={shifts}
+      employees={employees}
+      isManager={isManager}
+      openAddShift={openAddShift}
+      openEditShift={openEditShift}
+    />
   );
 }
+
 
 
 // ============================================================
