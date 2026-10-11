@@ -1014,70 +1014,176 @@ async function createDayOffRequest({
   swapShiftID,
   reason
 }) {
+
   if (!user || !shift) {
     return;
   }
 
   try {
-    const existingRequestsSnapshot = await new Promise((resolve, reject) => {
-      const unsubscribe = onSnapshot(
-        query(
-          collection(db, "requests"),
-          where("employeeID", "==", user.uid),
-          where("status", "==", "pending")
-        ),
-        (snapshot) => {
-          unsubscribe();
-          resolve(snapshot);
-        },
-        (error) => {
-          unsubscribe();
-          reject(error);
+
+    // -------------------------------------------------------
+    // Prevent duplicate pending requests
+    // -------------------------------------------------------
+
+    const existingRequestsSnapshot =
+      await new Promise(
+        (resolve, reject) => {
+
+          const unsubscribe =
+            onSnapshot(
+              query(
+                collection(
+                  db,
+                  "requests"
+                ),
+                where(
+                  "employeeID",
+                  "==",
+                  user.uid
+                ),
+                where(
+                  "status",
+                  "==",
+                  "pending"
+                )
+              ),
+              (snapshot) => {
+
+                unsubscribe();
+
+                resolve(snapshot);
+              },
+              (error) => {
+
+                unsubscribe();
+
+                reject(error);
+              }
+            );
         }
       );
-    });
 
-    const duplicateRequest = existingRequestsSnapshot.docs.some((document) => {
-      const data = document.data();
-      if (data.shiftID === shift.id && data.type === requestType) {
-        if (requestType === "Shift Swap") {
-          return (
-            data.replacementEmployeeID === swapEmployeeID &&
-            data.replacementShiftID === swapShiftID
-          );
+    const duplicateRequest =
+      existingRequestsSnapshot.docs.some(
+        (document) => {
+
+          const data =
+            document.data();
+
+          // Same shift + same request type
+          if (
+            data.shiftID === shift.id &&
+            data.type === requestType
+          ) {
+
+            // For Shift Swap, also require
+            // the same employee and replacement shift.
+            if (
+              requestType === "Shift Swap"
+            ) {
+
+              return (
+                data.replacementEmployeeID ===
+                  swapEmployeeID &&
+                data.replacementShiftID ===
+                  swapShiftID
+              );
+
+            }
+
+            return true;
+          }
+
+          return false;
         }
-        return true;
-      }
-      return false;
-    });
+      );
 
     if (duplicateRequest) {
-      setError("You already have a pending request for this shift.");
+
+      setError(
+        "You already have a pending request for this shift."
+      );
+
       return;
     }
 
-    const requestID = crypto.randomUUID();
+    const requestID =
+      crypto.randomUUID();
 
-    await setDoc(doc(db, "requests", requestID), {
-      employeeID: user.uid,
-      type: requestType,
-      shiftID: shift.id,
-      requestedDate: Timestamp.fromDate(startOfDay(shift.date)),
-      proposedStart: requestType === "Shift Change" ? newStart : shift.start,
-      proposedEnd: requestType === "Shift Change" ? newEnd : shift.end,
-      replacementEmployeeID: requestType === "Shift Swap" ? swapEmployeeID : null,
-      replacementShiftID: requestType === "Shift Swap" ? swapShiftID : null,
-      reason: reason.trim(),
-      status: "pending",
-      createdAt: serverTimestamp()
-    });
+    await setDoc(
+      doc(
+        db,
+        "requests",
+        requestID
+      ),
+      {
+
+        employeeID:
+          user.uid,
+
+        type:
+          requestType,
+
+        shiftID:
+          shift.id,
+
+        requestedDate:
+          Timestamp.fromDate(
+            startOfDay(
+              shift.date
+            )
+          ),
+
+        proposedStart:
+  requestType === "Shift Change"
+    ? newStart
+    : shift.start,
+
+proposedEnd:
+  requestType === "Shift Change"
+    ? newEnd
+    : shift.end,
+
+        reason:
+          reason.trim(),
+
+
+          replacementEmployeeID:
+  requestType === "Shift Swap"
+    ? swapEmployeeID
+    : null,
+
+replacementShiftID:
+  requestType === "Shift Swap"
+    ? swapShiftID
+    : null,
+
+reason:
+  reason.trim(),
+
+        status:
+          "pending",
+
+        createdAt:
+          serverTimestamp()
+
+      }
+    );
+
   } catch (err) {
-    console.error("Create request error:", err);
-    setError("Could not submit request.");
+
+    console.error(
+      "Errore di richiesta di creazione:",
+      err
+    );
+
+    setError(
+      "Impossibile inviare la richiesta."
+    );
+
     throw err;
   }
 }
-
 
 // ==========================================================
 // APPROVE REQUEST
@@ -1220,7 +1326,7 @@ if (request.type === "Shift Change") {
     request.proposedEnd === null
   ) {
     throw new Error(
-      "Shift Change request is missing shift or requested hours."
+      "La richiesta di modifica del turno è un turno mancante o un orario richiesto."
     );
   }
 
@@ -1255,7 +1361,7 @@ if (request.type === "Shift Swap") {
     !request.replacementShiftID
   ) {
     throw new Error(
-      "Shift Swap request is missing one of the shifts."
+      "Alla richiesta Shift Swap manca uno dei turni."
     );
   }
 
@@ -1273,7 +1379,7 @@ if (request.type === "Shift Swap") {
 
   if (!requestedShift || !replacementShift) {
     throw new Error(
-      "One of the shifts in this swap could not be found."
+      "Uno dei turni in questo scambio non può essere trovato."
     );
   }
 
@@ -1320,7 +1426,7 @@ if (request.type === "Shift Swap") {
     const updateData = {
 
       status:
-        "approved",
+        "approvato",
 
       reviewedAt:
         serverTimestamp()
@@ -1684,7 +1790,7 @@ setShowAddEmployee(false);
           <button
   onClick={enablePushNotifications}
 >
-  🔔 Enable Notifications
+  🔔 Attiva notifiche
 </button>
 
           <span>
@@ -1707,7 +1813,7 @@ setShowAddEmployee(false);
           <button
             onClick={handleSignOut}
           >
-            Sign Out
+            Esci
           </button>
 
         </div>
@@ -1731,7 +1837,7 @@ setShowAddEmployee(false);
             )
           }
         >
-          📅 Timetable
+          📅 Turni
         </button>
 
         <button
@@ -1746,7 +1852,7 @@ setShowAddEmployee(false);
             )
           }
         >
-          👥 Employees
+          👥 Dipendenti
         </button>
 
         <button
@@ -1759,7 +1865,7 @@ setShowAddEmployee(false);
             setActiveTab("hours")
           }
         >
-          ⏱ Hours
+          ⏱ Ore
         </button>
 
         <button
@@ -1774,7 +1880,7 @@ setShowAddEmployee(false);
             )
           }
         >
-          🔄 Requests
+          🔄 Richieste
         </button>
         <button
   className={
@@ -1788,7 +1894,7 @@ setShowAddEmployee(false);
     )
   }
 >
-  🔔 Notifications
+  🔔 Notifiche
 </button>
 
       </nav>
@@ -1930,7 +2036,6 @@ function ManagerDepartmentTimetable({
   shifts,
   employees,
   openAddShift,
-  isManager,
   openEditShift
 }) {
 
@@ -2018,7 +2123,7 @@ function ManagerDepartmentTimetable({
     );
     const periodText =
   publicationStart.toLocaleDateString(
-    "en-US",
+    "it-IT",
     {
       month: "long",
       day: "numeric",
@@ -2027,7 +2132,7 @@ function ManagerDepartmentTimetable({
   ) +
   "–" +
   publicationEnd.toLocaleDateString(
-    "en-US",
+    "it-IT",
     {
       month: "long",
       day: "numeric",
@@ -2084,8 +2189,8 @@ await addDoc(
 function shareTimetableOnWhatsApp() {
   const message =
     `📅 VOLUME TIMETABLE\n\n` +
-    `The timetable is now available.\n\n` +
-    `Open the timetable:\n` +
+    `L'orario è ora disponibile..\n\n` +
+    `Apri l'orario:\n` +
     `https://danyalrahujo.github.io/volume-pwa/`;
 
   const whatsappURL =
@@ -2191,7 +2296,7 @@ function shareTimetableOnWhatsApp() {
 
     const firstMonth =
       first.toLocaleDateString(
-        "en-US",
+        "it-IT",
         {
           month: "long"
         }
@@ -2199,7 +2304,7 @@ function shareTimetableOnWhatsApp() {
 
     const lastMonth =
       last.toLocaleDateString(
-        "en-US",
+        "it-IT",
         {
           month: "long"
         }
@@ -2225,11 +2330,11 @@ function shareTimetableOnWhatsApp() {
         <div>
 
           <h1>
-            Timetable
+            Orario
           </h1>
 
           <p>
-            Manage shifts by department
+            Gestisci i turni per dipartimento
           </p>
 
         </div>
@@ -2261,7 +2366,7 @@ function shareTimetableOnWhatsApp() {
           className="today-button"
           onClick={goToday}
         >
-          Today
+          Oggi
         </button>
 
       </div>
@@ -2278,7 +2383,7 @@ function shareTimetableOnWhatsApp() {
           <div className="table-row table-header">
 
             <div className="employee-column">
-              DEPARTMENT
+              DIPARTIMENTO
             </div>
 
             {weekDates.map(
@@ -2300,7 +2405,7 @@ function shareTimetableOnWhatsApp() {
 
                   <span>
                     {date.toLocaleDateString(
-                      "en-US",
+                      "it-IT",
                       {
                         weekday:
                           "short"
@@ -2373,58 +2478,74 @@ function shareTimetableOnWhatsApp() {
                         {dayShifts.length > 0 ? (
 
   <div className="shift-list">
-{dayShifts.map((shift) => (
-  <button
-    key={shift.id}
-    className="shift-card"
-    onClick={() => {
-      if (isManager) {
-        openEditShift(shift);
-      } else {
-        alert("Only managers can edit shifts directly. Use the Requests tab to submit changes.");
-      }
-    }}
-  >
-    <strong>{employeeName(shift.employeeID)}</strong>
-    <span>
-      {minutesToTime(shift.start)}–{minutesToTime(shift.end)}
-    </span>
-    <small>{durationText(shift.start, shift.end)}</small>
-  </button>
-))}
 
+    {dayShifts.map(
+      (shift) => (
+
+        <button
+          key={shift.id}
+          className="shift-card"
+          onClick={() =>
+            openEditShift(shift)
+          }
+        >
+
+          <strong>
+            {
+              employeeName(
+                shift.employeeID
+              )
+            }
+          </strong>
+
+          <span>
+  {minutesToTime(shift.start)}
+  {"–"}
+  {minutesToTime(shift.end)}
+  {shift.end <= shift.start && " (+1)"}
+</span>
+
+          <small>
+            {
+              durationText(
+                shift.start,
+                shift.end
+              )
+            }
+          </small>
+
+        </button>
+
+      )
+    )}
 
     <button
-  className="empty-cell"
-  onClick={() => {
-    if (isManager) {
-      openAddShift(date, department);
-    } else {
-      alert("Only managers can add new shifts.");
-    }
-  }}
->
-  +
-</button>
-
+      className="empty-cell"
+      onClick={() =>
+        openAddShift(
+          date,
+          department
+        )
+      }
+    >
+      +
+    </button>
 
   </div>
 
 ) : (
 
   <button
-  className="empty-cell"
-  onClick={() => {
-    if (isManager) {
-      openAddShift(date, department);
-    } else {
-      alert("Only managers can add new shifts.");
+    className="empty-cell"
+    onClick={() =>
+      openAddShift(
+        date,
+        department
+      )
     }
-  }}
->
-  +
-</button>
-
+  >
+    +
+  </button>
 
 )}
 
@@ -2455,46 +2576,39 @@ function shareTimetableOnWhatsApp() {
   </span>
 
   <span>
-    Week view
+    Vista settimanale
   </span>
 
   <div className="info-actions">
 
-  <button
-    className="publish-button"
-    onClick={() => {
-      if (isManager) {
-        setShowPublishModal(true);
-      } else {
-        alert("Only managers can publish timetables.");
+    <button
+  className="publish-button"
+  onClick={() =>
+    setShowPublishModal(true)
+  }
+>
+  📢 Pubblica turni
+</button>
+
+<button
+  className="whatsapp-button"
+  onClick={shareTimetableOnWhatsApp}
+>
+  🟢 Condividi su WhatsApp
+</button>
+
+    <button
+      className="add-shift-button"
+      onClick={() =>
+        openAddShift(
+          new Date()
+        )
       }
-    }}
-  >
-    📢 Publish Timetable
-  </button>
+    >
+      + Aggiungi turno
+    </button>
 
-  <button
-    className="whatsapp-button"
-    onClick={shareTimetableOnWhatsApp}
-  >
-    🟢 Share on WhatsApp
-  </button>
-
-  <button
-    className="add-shift-button"
-    onClick={() => {
-      if (isManager) {
-        openAddShift(new Date());
-      } else {
-        alert("Only managers can add new shifts.");
-      }
-    }}
-  >
-    + Add Shift
-  </button>
-
-</div>
-
+  </div>
 
 </div>
 {showPublishModal && (
@@ -2602,6 +2716,7 @@ function shareTimetableOnWhatsApp() {
   );
 }
 
+
 // ============================================================
 // TIMETABLE VIEW
 // ============================================================
@@ -2618,18 +2733,341 @@ function TimetableView({
   openAddShift,
   openEditShift
 }) {
-  // Both Employees and Managers now use the Weekly Department Timetable view
+    if (isManager) {
+
+    return (
+      <ManagerDepartmentTimetable
+        shifts={shifts}
+        employees={employees}
+        openAddShift={openAddShift}
+        openEditShift={openEditShift}
+      />
+    );
+
+  }
+
   return (
-    <ManagerDepartmentTimetable
-      shifts={shifts}
-      employees={employees}
-      isManager={isManager}
-      openAddShift={openAddShift}
-      openEditShift={openEditShift}
-    />
+    <main className="main-content">
+
+      <div className="page-header">
+
+        <div>
+
+          <h1>
+            Timetable
+          </h1>
+
+          <p>
+            {profile?.name
+              ? `Welcome, ${profile.name}`
+              : ""}
+          </p>
+
+        </div>
+
+        {dataLoading && (
+          <span className="sync-text">
+            Loading...
+          </span>
+        )}
+
+      </div>
+
+
+      {/* MONTH NAVIGATION */}
+
+      <div className="month-navigation">
+
+        <button
+          onClick={() =>
+            setMonth(
+              new Date(
+                month.getFullYear(),
+                month.getMonth() - 1,
+                1
+              )
+            )
+          }
+        >
+          ‹
+        </button>
+
+        <strong>
+          {month.toLocaleDateString(
+            "it-IT",
+            {
+              month: "long",
+              year: "numeric"
+            }
+          )}
+        </strong>
+
+        <button
+          onClick={() =>
+            setMonth(
+              new Date(
+                month.getFullYear(),
+                month.getMonth() + 1,
+                1
+              )
+            )
+          }
+        >
+          ›
+        </button>
+
+        <button
+          className="today-button"
+          onClick={() =>
+            setMonth(new Date())
+          }
+        >
+          Today
+        </button>
+
+      </div>
+
+
+      {/* TABLE */}
+
+      <div className="table-wrapper">
+
+        <div className="timetable">
+
+          <div className="table-row table-header">
+
+            <div className="employee-column">
+              EMPLOYEE
+            </div>
+
+            {monthDates.map(
+              (date) => (
+
+                <div
+                  className={
+                    sameDay(
+                      date,
+                      new Date()
+                    )
+                      ? "day-column today"
+                      : "day-column"
+                  }
+                  key={
+                    date.toISOString()
+                  }
+                >
+
+                  <span>
+                    {date.toLocaleDateString(
+                      "it-IT",
+                      {
+                        weekday:
+                          "short"
+                      }
+                    )}
+                  </span>
+
+                  <strong>
+                    {date.getDate()}
+                  </strong>
+
+                </div>
+
+              )
+            )}
+
+          </div>
+
+
+          {employees.length === 0 ? (
+
+            <div className="empty-state">
+              No employees yet.
+            </div>
+
+          ) : (
+
+            employees.map(
+              (employee) => (
+
+                <div
+                  className="table-row"
+                  key={employee.id}
+                >
+
+                  <div className="employee-column employee-name">
+                    {employee.name}
+                  </div>
+
+                  {monthDates.map(
+                    (date) => {
+
+                      const dayShifts =
+                        shifts
+                          .filter(
+                            (shift) =>
+                              shift.employeeID ===
+                                employee.id &&
+                              sameDay(
+                                shift.date,
+                                date
+                              )
+                          )
+                          .sort(
+                            (a, b) =>
+                              a.start -
+                              b.start
+                          );
+
+                      return (
+
+                        <div
+                          className="day-column shift-cell"
+                          key={
+                            date.toISOString()
+                          }
+                        >
+
+                          {dayShifts.length >
+                          0 ? (
+
+                            <div className="shift-list">
+
+                              {dayShifts.map(
+                                (shift) => (
+
+                                  <button
+                                    key={
+                                      shift.id
+                                    }
+                                    className="shift-card"
+                                    onClick={() =>
+                                      isManager &&
+                                      openEditShift(
+                                        shift
+                                      )
+                                    }
+                                    disabled={
+                                      !isManager
+                                    }
+                                  >
+
+                                    <strong>
+                                      {
+                                        minutesToTime(
+                                          shift.start
+                                        )
+                                      }
+                                      {"–"}
+                                      {
+                                        minutesToTime(
+                                          shift.end
+                                        )
+                                      }
+                                    </strong>
+
+                                    <span>
+                                      {
+                                        shift.department
+                                      }
+                                    </span>
+
+                                    <small>
+                                      {
+                                        durationText(
+                                          shift.start,
+                                          shift.end
+                                        )
+                                      }
+                                    </small>
+
+                                  </button>
+
+                                )
+                              )}
+
+                            </div>
+
+                          ) : (
+
+                            isManager ? (
+
+                              <button
+                                className="empty-cell"
+                                onClick={() =>
+                                  openAddShift(
+                                    date
+                                  )
+                                }
+                              >
+                                +
+                              </button>
+
+                            ) : (
+
+                              <span className="dash">
+                                —
+                              </span>
+
+                            )
+                          )}
+
+                        </div>
+
+                      );
+                    }
+                  )}
+
+                </div>
+
+              )
+            )
+          )}
+
+        </div>
+
+      </div>
+
+
+      <div className="info-row">
+
+        <span>
+          {employees.length} employee
+          {employees.length !== 1
+            ? "s"
+            : ""}
+        </span>
+
+        <span>
+          {shifts.filter(
+            (shift) =>
+              shift.date.getMonth() ===
+                month.getMonth() &&
+              shift.date.getFullYear() ===
+                month.getFullYear()
+          ).length} shifts
+        </span>
+
+        {isManager && (
+
+          <button
+            className="add-shift-button"
+            onClick={() =>
+              openAddShift(
+                new Date()
+              )
+            }
+          >
+            + Aggiungi turno
+          </button>
+
+        )}
+
+      </div>
+
+    </main>
   );
 }
-
 
 
 // ============================================================
@@ -2658,7 +3096,7 @@ function EmployeesView({
         <div>
 
           <h1>
-            Employees
+            DIPENDENTE
           </h1>
 
           <p>
@@ -2691,7 +3129,7 @@ function EmployeesView({
         {employees.length === 0 ? (
 
           <div className="empty-panel">
-            No employees yet.
+            No DIPENDENTE yet.
           </div>
 
         ) : (
@@ -2963,11 +3401,11 @@ function HoursView({
         <div>
 
           <h1>
-            Hours
+            Ore
           </h1>
 
           <p>
-            Hours and days worked
+            Ore e giorni lavorati
           </p>
 
         </div>
@@ -2993,7 +3431,7 @@ function HoursView({
 
         <strong>
           {month.toLocaleDateString(
-            "en-US",
+            "it-IT",
             {
               month: "long",
               year: "numeric"
@@ -3096,7 +3534,7 @@ function HoursView({
                     </strong>
 
                     <span>
-                      days
+                      giorni
                     </span>
 
                   </div>
@@ -3110,7 +3548,7 @@ function HoursView({
                     </strong>
 
                     <span>
-                      total hours
+                      ore totali
                     </span>
 
                   </div>
@@ -3129,7 +3567,7 @@ function HoursView({
       {employees.length === 0 && (
 
         <div className="empty-panel">
-          No employees yet.
+          Nessun dipendente ancora.
         </div>
 
       )}
@@ -3240,7 +3678,7 @@ function employeeName(employeeID) {
     }
 
     return date.toLocaleDateString(
-      "en-US",
+      "it-IT",
       {
         weekday: "short",
         day: "numeric",
@@ -3337,7 +3775,7 @@ function employeeName(employeeID) {
           </div>
 
           <h3>
-            No requests
+            Nessuna richiesta
           </h3>
 
           <p>
@@ -4040,7 +4478,7 @@ const [newEnd, setNewEnd] =
 
   function formatShiftDate(date) {
     return date.toLocaleDateString(
-      "en-US",
+      "it-IT",
       {
         weekday: "short",
         day: "numeric",
@@ -4284,11 +4722,11 @@ const [newEnd, setNewEnd] =
   }
 >
   <span>
-    Shift Swap
+    Scambio di turno
   </span>
 
   <small>
-    Swap this shift with another employee
+Scambia questo turno con un altro dipendente
   </small>
 </button>
 
@@ -4300,7 +4738,7 @@ const [newEnd, setNewEnd] =
   <>
     <label>
 
-      New start time
+      Nuovo orario di inizio
 
       <select
   value={newStart ?? ""}
@@ -4317,7 +4755,7 @@ const [newEnd, setNewEnd] =
 
     <label>
 
-      New end time
+      Nuovo orario di fine
 
      <select
   value={newEnd ?? ""}
@@ -4338,7 +4776,7 @@ const [newEnd, setNewEnd] =
 
   <>
     <label>
-      Swap with
+      Scambia con
 
 <select
   value={swapEmployeeID}
@@ -4349,7 +4787,7 @@ const [newEnd, setNewEnd] =
   }
 >
   <option value="">
-    Choose an employee...
+    Scegli un dipendente...
   </option>
 
   {employees
@@ -4372,7 +4810,7 @@ const [newEnd, setNewEnd] =
     {swapEmployeeID && (
 
   <label>
-    Their shift
+    Il loro turno
 
     <select
       value={swapShiftID}
@@ -4383,7 +4821,7 @@ const [newEnd, setNewEnd] =
       }
     >
       <option value="">
-        Choose their shift...
+        Scegli il loro turno...
       </option>
 
       {swapShifts.map(
@@ -4418,7 +4856,7 @@ const [newEnd, setNewEnd] =
 
 <label>
 
-  Reason
+  Motivo
 
   <span className="label-help">
     Optional
@@ -4433,8 +4871,8 @@ const [newEnd, setNewEnd] =
     }
     placeholder={
       requestType === "Shift Change"
-        ? "Why do you need different working hours?"
-        : "Why do you need this day off?"
+        ? "Perché hai bisogno di orari di lavoro diversi?"
+        : "Perché hai bisogno di questo giorno libero?"
     }
     rows="4"
   />
@@ -4449,10 +4887,10 @@ const [newEnd, setNewEnd] =
                 </strong>
 
                 <span>
-                  Submitting a request does
-                  not change the official
-                  timetable. The manager must
-                  approve it first.
+                  L'invio di una richiesta lo fa
+                  non cambiare il funzionario
+                  orario. Il direttore deve
+                  approvalo prima.
                 </span>
 
               </div>
@@ -4535,11 +4973,11 @@ function NotificationsView({
         <div>
 
           <h1>
-            Notifications
+            Notifiche
           </h1>
 
           <p>
-            Updates from VOLUME
+            Aggiornamenti da VOLUME
           </p>
 
         </div>
@@ -4556,11 +4994,11 @@ function NotificationsView({
           </div>
 
           <h3>
-            No notifications
+            Nessuna notifica
           </h3>
 
           <p>
-            You're all caught up.
+            Sei al passo con gli aggiornamenti.
           </p>
 
         </div>
@@ -4706,14 +5144,14 @@ function ShiftEditor({
 
             <h2>
               {shift
-                ? "Edit Shift"
-                : "Add Shift"}
+                ? "Modifica Turno"
+                : "Aggiungi turno"}
             </h2>
 
             <p>
               {shift
-                ? "Update the official timetable"
-                : "Create a new official shift"}
+                ? "Aggiornare l'orario ufficiale"
+                : "Creare un nuovo turno ufficiale"}
             </p>
 
           </div>
@@ -4732,7 +5170,7 @@ function ShiftEditor({
 
           <label>
 
-            Employee
+            DIPENDENTE
 
             <select
               value={employeeID}
@@ -4763,7 +5201,7 @@ function ShiftEditor({
 
           <label>
 
-            Date
+            Data
 
             <input
               type="date"
@@ -4779,7 +5217,7 @@ function ShiftEditor({
 
 
           <label>
-  Department
+  DIPARTIMENTO
 
   <div className="readonly-field">
     {department}
@@ -4788,7 +5226,7 @@ function ShiftEditor({
 
           <label>
 
-            Start
+            Inizio
 
             <select
               value={start}
@@ -4810,7 +5248,7 @@ function ShiftEditor({
 
           <label>
 
-            End
+            Fine
 
             <select
               value={end}
@@ -4833,7 +5271,7 @@ function ShiftEditor({
           <div className="duration-box">
 
             <span>
-              Duration
+              Durata
             </span>
 
             <strong>
@@ -4856,7 +5294,7 @@ function ShiftEditor({
                   onDelete(shift)
                 }
               >
-                Delete Shift
+                Elimina Turno
               </button>
 
             ) : (
@@ -4871,7 +5309,7 @@ function ShiftEditor({
                 className="secondary-button"
                 onClick={onClose}
               >
-                Cancel
+                Annulla
               </button>
 
               <button

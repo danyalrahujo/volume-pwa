@@ -1882,3 +1882,134 @@ button:disabled {
   }
 
 }
+/* ============================================================
+   MOBILE WEEK VIEW — SHOW ALL 7 DAYS
+   ============================================================ */
+
+@media (max-width: 700px) {
+
+  .table-wrapper {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .timetable {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .timetable .table-row {
+    display: grid;
+
+    grid-template-columns:
+      78px
+      repeat(7, minmax(0, 1fr));
+
+    width: 100%;
+    min-width: 0;
+  }
+
+  .timetable .employee-column,
+  .timetable .day-column {
+    min-width: 0;
+    width: auto;
+    box-sizing: border-box;
+  }
+
+  /* Department column */
+  .timetable .employee-column {
+    padding-left: 8px;
+    padding-right: 5px;
+
+    overflow: hidden;
+  }
+
+  .timetable .employee-name {
+    font-size: 10px;
+    font-weight: 600;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Day headers */
+  .timetable .day-column {
+    padding-left: 2px;
+    padding-right: 2px;
+
+    text-align: center;
+  }
+
+  .timetable .day-column span {
+    font-size: 8px;
+  }
+
+  .timetable .day-column strong {
+    font-size: 10px;
+  }
+
+  /* Shift cells */
+  .timetable .shift-cell {
+    padding: 4px 2px;
+
+    overflow: hidden;
+  }
+
+  .timetable .shift-list {
+    width: 100%;
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  /* Compact shift card */
+  .timetable .shift-card {
+    width: 100%;
+    min-width: 0;
+
+    padding: 5px 2px;
+
+    border-radius: 7px;
+
+    overflow: hidden;
+  }
+
+  .timetable .shift-card strong {
+    display: block;
+
+    font-size: 8px;
+    line-height: 1.1;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .timetable .shift-card span {
+    display: block;
+
+    font-size: 7px;
+    line-height: 1.2;
+
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .timetable .shift-card small {
+    display: none;
+  }
+
+  /* + button inside empty cells */
+  .timetable .empty-cell {
+    width: 100%;
+    min-width: 0;
+
+    padding: 5px 0;
+
+    font-size: 14px;
+  }
+
+}
