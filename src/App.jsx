@@ -454,7 +454,12 @@ authUID:
 
                   department:
                     data.department
-                    || "Bar"
+                    || "Bar",
+                    departments:
+
+                    data.departments
+
+                    || [data.department || "Bar"]
 
                 };
               }
@@ -907,7 +912,8 @@ useEffect(() => {
     date,
     start,
     end,
-    department
+    department,
+    departments
   }) {
 
     if (!employeeID) {
@@ -940,6 +946,13 @@ useEffect(() => {
           end,
 
           department,
+          departments:
+
+            departments?.length
+
+              ? departments
+
+              : [department],
 
           updatedAt:
             serverTimestamp()
@@ -1695,7 +1708,7 @@ setShowAddEmployee(false);
           </h1>
 
           <p>
-            TIMETABLE
+            Orrario
           </p>
 
         </div>
@@ -1781,7 +1794,7 @@ setShowAddEmployee(false);
           </strong>
 
           <span>
-            TIMETABLE
+            Orrario
           </span>
 
         </div>
@@ -2040,11 +2053,11 @@ function ManagerDepartmentTimetable({
 }) {
 
   const departments = [
-    "Bar",
-    "Sala",
-    "Pattini",
-    "Ricevimento"
-  ];
+  "Bar",
+  "Sala",
+  "Piattini",
+  "Preparazione/Ricevimento"
+];
 
   const [weekDate, setWeekDate] =
     useState(new Date());
@@ -2155,10 +2168,10 @@ await addDoc(
     type: "timetable_published",
 
     title:
-      "Timetable Published",
+      "Orario pubblicato",
 
     message:
-  `The timetable for ${periodText} is now available.`,
+  `Il calendario per ${periodText} è ora disponibile.`,
 
     publicationID:
       publicationRef.id,
@@ -2172,12 +2185,12 @@ await addDoc(
 
     setShowPublishModal(false);
 
-    alert("Timetable published");
+    alert("Orario pubblicato");
 
   } catch (error) {
 
     console.error(
-      "Publish timetable error:",
+      "Errore di pubblicazione dell'orario:",
       error
     );
 
@@ -2453,12 +2466,14 @@ function shareTimetableOnWhatsApp() {
                       shifts
                         .filter(
                           (shift) =>
-                            shift.department ===
-                              department &&
-                            sameDay(
-                              shift.date,
-                              date
-                            )
+  (
+    shift.department === department ||
+    shift.departments?.includes(department)
+  ) &&
+  sameDay(
+    shift.date,
+    date
+  )
                         )
                         .sort(
                           (a, b) =>
@@ -2622,11 +2637,11 @@ function shareTimetableOnWhatsApp() {
         <div>
 
           <h2>
-            Publish Timetable
+            Orario di pubblicazione
           </h2>
 
           <p>
-            Choose the period you want to publish.
+            Scegli il periodo che desideri pubblicare.
           </p>
 
         </div>
@@ -2646,7 +2661,7 @@ function shareTimetableOnWhatsApp() {
       <div className="form">
 
         <label>
-          Timetable period
+          Periodo dell'orario
 
           <select
   value={publishPeriod}
@@ -2658,19 +2673,19 @@ function shareTimetableOnWhatsApp() {
 >
 
             <option value="this-week">
-              This week
+              Questa settimana
             </option>
 
             <option value="next-week">
-              Next week
+              Prossima settimana
             </option>
 
             <option value="two-weeks">
-              Next 2 weeks
+              Prossime 2 settimane
             </option>
 
             <option value="this-month">
-              This month
+              Questo mese
             </option>
 
           </select>
@@ -2690,14 +2705,14 @@ function shareTimetableOnWhatsApp() {
                 setShowPublishModal(false)
               }
             >
-              Cancel
+              Annulla
             </button>
 
             <button
   className="primary-button"
   onClick={publishTimetable}
 >
-  Publish
+  Pubblicare
 </button>
 
           </div>
@@ -2754,7 +2769,7 @@ function TimetableView({
         <div>
 
           <h1>
-            Timetable
+            Orario
           </h1>
 
           <p>
@@ -2822,7 +2837,7 @@ function TimetableView({
             setMonth(new Date())
           }
         >
-          Today
+          Oggi
         </button>
 
       </div>
@@ -3116,7 +3131,7 @@ function EmployeesView({
               setShowAddEmployee(true)
             }
           >
-            + Add Employee
+            + Aggiungi dipendente
           </button>
 
         )}
@@ -3241,11 +3256,11 @@ function EmployeesView({
               <div>
 
                 <h2>
-                  Add Employee
+                  Aggiungi dipendente
                 </h2>
 
                 <p>
-                  Add an employee to the VOLUME timetable.
+                  Aggiungere un dipendente all'orario VOLUME.
                 </p>
 
               </div>
@@ -3272,7 +3287,7 @@ function EmployeesView({
 
               <label>
 
-                Employee name
+                Nome del dipendente
 
                 <input
                   type="text"
@@ -3291,7 +3306,7 @@ function EmployeesView({
               </label>
               <label>
 
-  Employee email
+  Email del dipendente
 
   <input
     type="email"
@@ -3327,7 +3342,7 @@ function EmployeesView({
 
                     }}
                   >
-                    Cancel
+                    Annulla
                   </button>
 
                   <button
@@ -3340,7 +3355,7 @@ function EmployeesView({
                       addEmployee
                     }
                   >
-                    Add Employee
+                    Aggiungi dipendente
                   </button>
 
                 </div>
@@ -3459,7 +3474,7 @@ function HoursView({
             setMonth(new Date())
           }
         >
-          Today
+          Oggi
         </button>
 
       </div>
@@ -3738,14 +3753,14 @@ function employeeName(employeeID) {
 
           <h1>
             {isManager
-              ? "Requests"
-              : "My Requests"}
+              ? "Richieste"
+              : "Le mie richieste"}
           </h1>
 
           <p>
             {isManager
-              ? "Review employee requests"
-              : "Request time off or changes"}
+              ? "Esaminare le richieste dei dipendenti"
+              : "Richiedi ferie o modifiche"}
           </p>
 
         </div>
@@ -3758,7 +3773,7 @@ function employeeName(employeeID) {
               setShowNewRequest(true)
             }
           >
-            + New Request
+            + Nuova richiesta
           </button>
 
         )}
@@ -3836,7 +3851,7 @@ function employeeName(employeeID) {
                   <div className="request-date">
 
                     <strong>
-                      Requested date
+                      Data richiesta
                     </strong>
 
                     <span>
@@ -3895,7 +3910,7 @@ function employeeName(employeeID) {
 
 
     <strong>
-      Swap with
+      Scambia con
     </strong>
 
     <span>
@@ -3917,7 +3932,7 @@ function employeeName(employeeID) {
 
 
     <strong>
-      Their shift
+      Il loro turno
     </strong>
 
     <span>
@@ -4024,7 +4039,7 @@ function employeeName(employeeID) {
                     <div className="request-reason">
 
                       <strong>
-                        Reason
+                        Motivo
                       </strong>
 
                       <p>
@@ -4041,7 +4056,7 @@ function employeeName(employeeID) {
                     <div className="manager-comment">
 
                       <strong>
-                        Manager comment
+                        Commento del manager
                       </strong>
 
                       <p>
@@ -4257,7 +4272,7 @@ function employeeName(employeeID) {
 
 
     <strong>
-      Swap with
+      Scambia con
     </strong>
 
     <span>
@@ -4683,11 +4698,11 @@ const [newEnd, setNewEnd] =
     }
   >
     <span>
-      Day Off
+      Giorno libero
     </span>
 
     <small>
-      Request a day off for this shift
+      Richiedi un giorno libero per questo turno
     </small>
   </button>
 
@@ -4703,11 +4718,11 @@ const [newEnd, setNewEnd] =
     }
   >
     <span>
-      Shift Change
+      Modifica del turno
     </span>
 
     <small>
-      Request different working hours
+      Richiedi orari di lavoro diversi
     </small>
   </button>
   <button
@@ -5099,12 +5114,11 @@ function ShiftEditor({
       shift?.end ?? 1320
     );
 
- const [department, setDepartment] =
-  useState(
-    shift?.department ||
-    defaultDepartment ||
-    "Bar"
-  );
+   const [departments, setDepartments] =
+    useState(
+      shift?.departments ||
+      [shift?.department || defaultDepartment || "Bar"]
+    );
 
 
   function save() {
@@ -5127,7 +5141,9 @@ function ShiftEditor({
       end:
         Number(end),
 
-      department
+      department: departments[0],
+
+      departments
 
     });
   }
@@ -5216,13 +5232,33 @@ function ShiftEditor({
           </label>
 
 
-          <label>
-  DIPARTIMENTO
+                    <label>
+            DIPARTIMENTI
 
-  <div className="readonly-field">
-    {department}
-  </div>
-</label>
+            <div className="form-checkboxes">
+              {[
+                "Bar",
+                "Sala",
+                "Piattini",
+                "Preparazione/Ricevimento"
+              ].map((item) => (
+                <label key={item}>
+                  <input
+                    type="checkbox"
+                    checked={departments.includes(item)}
+                    onChange={(event) => {
+                      setDepartments((current) =>
+                        event.target.checked
+                          ? [...current, item]
+                          : current.filter((value) => value !== item)
+                      );
+                    }}
+                  />
+                  {item}
+                </label>
+              ))}
+            </div>
+          </label>
 
           <label>
 
@@ -5317,7 +5353,7 @@ function ShiftEditor({
                 onClick={save}
                 disabled={!employeeID}
               >
-                Save
+                Salva
               </button>
             </div>
           </div>
