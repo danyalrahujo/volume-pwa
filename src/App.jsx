@@ -2049,7 +2049,8 @@ function ManagerDepartmentTimetable({
   shifts,
   employees,
   openAddShift,
-  openEditShift
+  openEditShift,
+  isManager = true
 }) {
 
   const departments = [
@@ -2492,77 +2493,67 @@ function shareTimetableOnWhatsApp() {
 
                         {dayShifts.length > 0 ? (
 
-  <div className="shift-list">
+                          <div className="shift-list">
 
-    {dayShifts.map(
-      (shift) => (
+                            {dayShifts.map((shift) => (
 
-        <button
-          key={shift.id}
-          className="shift-card"
-          onClick={() =>
-            openEditShift(shift)
-          }
-        >
+                              <button
+                                key={shift.id}
+                                className="shift-card"
+                                onClick={() => {
+                                  if (isManager) {
+                                    openEditShift(shift);
+                                  }
+                                }}
+                                disabled={!isManager}
+                              >
+                                <strong>
+                                  {employeeName(shift.employeeID)}
+                                </strong>
 
-          <strong>
-            {
-              employeeName(
-                shift.employeeID
-              )
-            }
-          </strong>
+                                <span>
+                                  {minutesToTime(shift.start)}
+                                  {"–"}
+                                  {minutesToTime(shift.end)}
+                                  {shift.end <= shift.start && " (+1)"}
+                                </span>
 
-          <span>
-  {minutesToTime(shift.start)}
-  {"–"}
-  {minutesToTime(shift.end)}
-  {shift.end <= shift.start && " (+1)"}
-</span>
+                                <small>
+                                  {durationText(shift.start, shift.end)}
+                                </small>
+                              </button>
 
-          <small>
-            {
-              durationText(
-                shift.start,
-                shift.end
-              )
-            }
-          </small>
+                            ))}
 
-        </button>
+                            {isManager && (
+                              <button
+                                className="empty-cell"
+                                onClick={() =>
+                                  openAddShift(date, department)
+                                }
+                              >
+                                +
+                              </button>
+                            )}
 
-      )
-    )}
+                          </div>
 
-    <button
-      className="empty-cell"
-      onClick={() =>
-        openAddShift(
-          date,
-          department
-        )
-      }
-    >
-      +
-    </button>
+                        ) : (
 
-  </div>
+                          isManager ? (
+                            <button
+                              className="empty-cell"
+                              onClick={() =>
+                                openAddShift(date, department)
+                              }
+                            >
+                              +
+                            </button>
+                          ) : (
+                            <span className="dash">—</span>
+                          )
 
-) : (
-
-  <button
-    className="empty-cell"
-    onClick={() =>
-      openAddShift(
-        date,
-        department
-      )
-    }
-  >
-    +
-  </button>
-
-)}
+                        )}
 
                       </div>
 
@@ -2594,23 +2585,24 @@ function shareTimetableOnWhatsApp() {
     Vista settimanale
   </span>
 
+  {isManager && (
   <div className="info-actions">
 
     <button
-  className="publish-button"
-  onClick={() =>
-    setShowPublishModal(true)
-  }
->
-  📢 Pubblica turni
-</button>
+      className="publish-button"
+      onClick={() =>
+        setShowPublishModal(true)
+      }
+    >
+      📢 Pubblica turni
+    </button>
 
-<button
-  className="whatsapp-button"
-  onClick={shareTimetableOnWhatsApp}
->
-  🟢 Condividi su WhatsApp
-</button>
+    <button
+      className="whatsapp-button"
+      onClick={shareTimetableOnWhatsApp}
+    >
+      🟢 Condividi su WhatsApp
+    </button>
 
     <button
       className="add-shift-button"
@@ -2624,6 +2616,7 @@ function shareTimetableOnWhatsApp() {
     </button>
 
   </div>
+)}
 
 </div>
 {showPublishModal && (
@@ -2748,18 +2741,16 @@ function TimetableView({
   openAddShift,
   openEditShift
 }) {
-    if (isManager) {
-
+    
     return (
-      <ManagerDepartmentTimetable
-        shifts={shifts}
-        employees={employees}
-        openAddShift={openAddShift}
-        openEditShift={openEditShift}
-      />
-    );
-
-  }
+  <ManagerDepartmentTimetable
+    shifts={shifts}
+    employees={employees}
+    openAddShift={openAddShift}
+    openEditShift={openEditShift}
+    isManager={isManager}
+  />
+);
 
   return (
     <main className="main-content">

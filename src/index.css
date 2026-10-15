@@ -360,11 +360,8 @@ button {
   display: grid;
 
   grid-template-columns:
-    130px
-    repeat(
-      31,
-      86px
-    );
+    170px
+    repeat(7, minmax(100px, 1fr));
 
   border-bottom: 1px solid #e8e8e8;
 }
@@ -383,9 +380,9 @@ button {
 }
 
 .employee-column {
-  width: 130px;
-
-  padding: 10px;
+  width: 170px;
+  box-sizing: border-box;
+  padding: 12px;
 
   display: flex;
   align-items: center;
@@ -394,7 +391,6 @@ button {
   left: 0;
 
   z-index: 2;
-
   background: white;
 
   border-right: 1px solid #ddd;
@@ -439,8 +435,14 @@ button {
 }
 
 .day-column.today {
-  background: #111;
-  color: white;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.table-header .day-column.today {
+  background: #dbeafe;
+  color: #1d4ed8;
+  box-shadow: inset 0 -3px 0 #2563eb;
 }
 
 .shift-cell {
@@ -458,22 +460,55 @@ button {
 
 .shift-card {
   width: 100%;
-
-  padding: 6px 4px;
+  box-sizing: border-box;
+  padding: 9px 6px;
 
   display: flex;
   flex-direction: column;
-
   align-items: center;
+  gap: 3px;
 
-  border: 0;
-  border-radius: 7px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
 
-  background: #f0f0f0;
+  background: #f8fafc;
+  color: #111827;
 
-  color: #111;
+  line-height: 1.3;
+  cursor: pointer;
 
-  line-height: 1.2;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.shift-card:hover:not(:disabled) {
+  background: #eef2f7;
+  border-color: #cbd5e1;
+}
+
+.shift-card:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.shift-card strong {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.shift-card span {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #475569;
+  text-align: center;
+}
+
+.shift-card small {
+  margin-top: 2px;
+  font-size: 10px;
+  color: #64748b;
 }
 
 .shift-card:hover:not(:disabled) {
@@ -1886,103 +1921,91 @@ button:disabled {
    MOBILE WEEK VIEW — SHOW ALL 7 DAYS
    ============================================================ */
 
-@media (max-width: 700px) {
+/* ============================================================
+   MOBILE WEEK VIEW — OPTIMIZED FOR PHONES
+   ============================================================ */
 
+@media (max-width: 700px) {
   .table-wrapper {
     width: 100%;
-    overflow-x: hidden;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .timetable {
     width: 100%;
-    min-width: 0;
+    min-width: 560px;
   }
 
   .timetable .table-row {
     display: grid;
-
-    grid-template-columns:
-      78px
-      repeat(7, minmax(0, 1fr));
-
+    grid-template-columns: 112px repeat(7, minmax(64px, 1fr));
     width: 100%;
-    min-width: 0;
+    min-width: 560px;
   }
 
   .timetable .employee-column,
   .timetable .day-column {
+    box-sizing: border-box;
     min-width: 0;
     width: auto;
-    box-sizing: border-box;
   }
 
-  /* Department column */
+  /* Department names */
   .timetable .employee-column {
-    padding-left: 8px;
-    padding-right: 5px;
-
-    overflow: hidden;
+    padding: 10px 7px;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    font-size: 10px;
   }
 
   .timetable .employee-name {
     font-size: 10px;
     font-weight: 600;
-
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.3;
   }
 
-  /* Day headers */
+  /* Day headings */
   .timetable .day-column {
-    padding-left: 2px;
-    padding-right: 2px;
-
+    padding: 6px 3px;
     text-align: center;
   }
 
   .timetable .day-column span {
-    font-size: 8px;
+    font-size: 9px;
   }
 
   .timetable .day-column strong {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   /* Shift cells */
   .timetable .shift-cell {
-    padding: 4px 2px;
-
-    overflow: hidden;
+    padding: 5px 3px;
+    overflow: visible;
   }
 
   .timetable .shift-list {
     width: 100%;
     min-width: 0;
-
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
   }
 
-  /* Compact shift card */
+  /* Shift cards */
   .timetable .shift-card {
     width: 100%;
     min-width: 0;
-
-    padding: 5px 2px;
-
+    padding: 7px 3px;
     border-radius: 7px;
-
     overflow: hidden;
   }
 
   .timetable .shift-card strong {
     display: block;
-
-    font-size: 8px;
-    line-height: 1.1;
-
+    font-size: 9px;
+    line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1990,10 +2013,8 @@ button:disabled {
 
   .timetable .shift-card span {
     display: block;
-
-    font-size: 7px;
-    line-height: 1.2;
-
+    font-size: 8px;
+    line-height: 1.3;
     white-space: nowrap;
     overflow: hidden;
   }
@@ -2002,14 +2023,208 @@ button:disabled {
     display: none;
   }
 
-  /* + button inside empty cells */
+  /* Add-shift button */
   .timetable .empty-cell {
     width: 100%;
     min-width: 0;
-
+    min-height: 36px;
     padding: 5px 0;
+    font-size: 16px;
+    opacity: 1;
+  }
 
+  /* Compact action buttons */
+  .info-row {
+    gap: 10px;
+    align-items: center;
+  }
+
+  .info-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .info-actions button {
+    width: 100%;
+    min-height: 44px;
+    margin-left: 0;
+  }
+}
+
+/* ============================================================
+   MOBILE-FIRST SHIFT EDITOR IMPROVEMENTS
+   ============================================================ */
+
+.modal {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.form input,
+.form select {
+  min-height: 46px;
+  box-sizing: border-box;
+  font-size: 16px;
+}
+
+.close-button {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+}
+
+.duration-box {
+  min-height: 48px;
+  box-sizing: border-box;
+  align-items: center;
+  font-size: 14px;
+}
+
+.primary-button,
+.secondary-button,
+.delete-button {
+  min-height: 44px;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .modal-backdrop {
+    padding: 8px;
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    align-items: center;
+  }
+
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 16px);
+    border-radius: 14px;
+  }
+
+  .modal-header {
+    padding: 16px;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .modal-header h2 {
+    font-size: 20px;
+  }
+
+  .form {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .form label {
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .form-actions {
+    gap: 10px;
+  }
+
+  .right-actions {
+    gap: 10px;
+  }
+
+  .right-actions button {
+    min-height: 48px;
+  }
+}
+
+@media (max-width: 380px) {
+  .modal-header,
+  .form {
+    padding: 12px;
+  }
+
+  .form-actions {
+    gap: 8px;
+  }
+
+  .right-actions {
+    gap: 8px;
+  }
+}
+/* ============================================================
+   DEPARTMENT CHECKBOXES — MOBILE FRIENDLY
+   ============================================================ */
+
+.form .form-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.form .form-checkboxes > label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.form .form-checkboxes > label:has(input:checked) {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.form .form-checkboxes > label input[type="checkbox"] {
+  appearance: auto;
+  -webkit-appearance: checkbox;
+
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+
+  margin: 0;
+  padding: 0;
+
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .form .form-checkboxes {
+    gap: 7px;
+  }
+
+  .form .form-checkboxes > label {
+    min-height: 48px;
+    padding: 10px 12px;
     font-size: 14px;
   }
 
+  .form .form-checkboxes > label input[type="checkbox"] {
+    flex-basis: 22px;
+    width: 22px;
+    height: 22px;
+    min-height: 22px;
+  }
 }
