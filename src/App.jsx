@@ -21,6 +21,8 @@ import {
   signOut
 } from "firebase/auth";
 import { getToken } from "firebase/messaging";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 // ============================================================
 // HELPERS
 // ============================================================
@@ -2067,6 +2069,17 @@ function ManagerDepartmentTimetable({
   useState(false);
   const [publishPeriod, setPublishPeriod] =
   useState("this-week");
+  const [showShareModal, setShowShareModal] =
+  useState(false);
+
+const [sharePeriod, setSharePeriod] =
+  useState("this-week");
+
+const [shareFormat, setShareFormat] =
+  useState("png");
+
+const [isGeneratingExport, setIsGeneratingExport] =
+  useState(false);
  async function publishTimetable() {
 
   try {
@@ -2201,21 +2214,446 @@ await addDoc(
   }
 }
 function shareTimetableOnWhatsApp() {
-  const message =
-    `📅 VOLUME TIMETABLE\n\n` +
-    `L'orario è ora disponibile..\n\n` +
-    `Apri l'orario:\n` +
-    `https://danyalrahujo.github.io/volume-pwa/`;
-
-  const whatsappURL =
-    `https://wa.me/?text=${encodeURIComponent(message)}`;
-
-  window.open(
-    whatsappURL,
-    "_blank",
-    "noopener,noreferrer"
-  );
+  setShowShareModal(true);
 }
+
+    function getExportPeriod(period) {
+    let start;
+    let end;
+
+    if (period === "this-week") {
+      start = new Date(weekDates[0]);
+      end = new Date(weekDates[6]);
+    } else if (period === "next-week") {
+      start = new Date(weekDates[0]);
+      start.setDate(start.getDate() + 7);
+
+      end = new Date(start);
+      end.setDate(end.getDate() + 6);
+    } else if (period === "two-weeks") {
+      start = new Date(weekDates[0]);
+      end = new Date(start);
+      end.setDate(end.getDate() + 13);
+    } else {
+      start = new Date(
+        weekDate.getFullYear(),
+        weekDate.getMonth(),
+        1
+      );
+
+      end = new Date(
+        weekDate.getFullYear(),
+        weekDate.getMonth() + 1,
+        0
+      );
+    }
+
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
+    return { start, end };
+  }
+  function splitIntoWeeks(start, end) {
+  const weeks = [];
+  let current = new Date(start);
+
+  while (current <= end) {
+    const weekStart = new Date(current);
+    const weekEnd = new Date(current);
+
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    if (weekEnd > end) {
+      weekEnd.setTime(end.getTime());
+    }
+
+    weeks.push({
+      start: weekStart,
+      end: weekEnd
+    });
+
+    current = new Date(weekEnd);
+    current.setDate(current.getDate() + 1);
+    current.setHours(0, 0, 0, 0);
+  }
+
+  return weeks;
+}
+
+    async function generateTimetableExport() {
+    setIsGeneratingExport(true);
+
+    let exportElements = [];
+
+    try {
+      const { start, end } = getExportPeriod(sharePeriod);
+      const weeks = splitIntoWeeks(start, end);
+
+      const monthName = start.toLocaleDateString("it-IT", {
+        month: "long",
+        year: "numeric"
+      });
+
+      const filePrefix =
+        `VOLUME-orario-${start.toISOString().slice(0, 10)}`;
+
+      // Build one readable timetable for each weekly section.
+      for (let weekIndex = 0; weekIndex < weeks.length; weekIndex++) {
+        const week = weeks[weekIndex];
+        const dates = [];
+        const current = new Date(week.start);
+
+        while (current <= week.end) {
+          dates.push(new Date(current));
+          current.setDate(current.getDate() + 1);
+        }
+
+        const periodLabel =
+          `${week.start.toLocaleDateString("it-IT")} – ` +
+          `${week.end.toLocaleDateString("it-IT")}`;
+
+        const element = document.createElement("div");
+
+        Object.assign(element.style, {
+          position: "fixed",
+          left: "-10000px",
+          top: "0",
+          width: "1200px",
+          padding: "32px",
+          background: "#ffffff",
+          color: "#172033",
+          fontFamily: "Arial, sans-serif",
+          boxSizing: "border-box"
+        });
+
+        const heading = document.createElement("div");
+
+        heading.innerHTML = `
+          <div style="font-size:32px;font-weight:800;letter-spacing:3px;color:#173b75">
+            VOLUME
+          </div>
+          <div style="font-size:22px;font-weight:700;margin-top:8px">
+            ORARIO DEL PERSONALE
+          </div>
+          <div style="font-size:15px;color:#64748b;margin-top:8px">
+            ${periodLabel}
+          </div>
+          ${
+            weeks.length > 1
+              ? `<div style="font-size:13px;color:#64748b;margin-top:5px">
+                   ${monthName} · Settimana ${weekIndex + 1} di ${weeks.length}
+                 </div>`
+              : ""
+          }
+        `;
+
+        element.appendChild(heading);
+
+        const table = document.createElement("table");
+
+        Object.assign(table.style, {
+          width: "100%",
+          borderCollapse: "collapse",
+          tableLayout: "fixed",
+          marginTop: "28px",
+          fontSize: "13px"
+        });
+
+        const header = document.createElement("tr");
+        const departmentHeader = document.createElement("th");
+
+        departmentHeader.textContent = "DIPARTIMENTO";
+
+        Object.assign(departmentHeader.style, {
+          width: "180px",
+          background: "#173b75",
+          color: "#ffffff",
+          padding: "12px 8px",
+          textAlign: "left",
+          border: "1px solid #dbe3ef"
+        });
+
+        header.appendChild(departmentHeader);
+
+        dates.forEach((date) => {
+          const th = document.createElement("th");
+
+          th.textContent = date.toLocaleDateString("it-IT", {
+            weekday: "short",
+            day: "2-digit",
+            month: "2-digit"
+          });
+
+          Object.assign(th.style, {
+            background: "#173b75",
+            color: "#ffffff",
+            padding: "10px 4px",
+            border: "1px solid #dbe3ef",
+            overflowWrap: "anywhere"
+          });
+
+          header.appendChild(th);
+        });
+
+        table.appendChild(header);
+
+        departments.forEach((department) => {
+          const row = document.createElement("tr");
+          const departmentCell = document.createElement("th");
+
+          departmentCell.textContent = department;
+
+          Object.assign(departmentCell.style, {
+            background: "#eef3fb",
+            color: "#173b75",
+            textAlign: "left",
+            verticalAlign: "top",
+            padding: "12px 8px",
+            border: "1px solid #dbe3ef",
+            overflowWrap: "anywhere"
+          });
+
+          row.appendChild(departmentCell);
+
+          dates.forEach((date) => {
+            const cell = document.createElement("td");
+
+            Object.assign(cell.style, {
+              verticalAlign: "top",
+              padding: "6px",
+              border: "1px solid #dbe3ef",
+              overflowWrap: "anywhere"
+            });
+
+            const dayShifts = shifts
+              .filter((shift) =>
+                (
+                  shift.department === department ||
+                  shift.departments?.includes(department)
+                ) &&
+                sameDay(shift.date, date)
+              )
+              .sort((a, b) => a.start - b.start);
+
+            dayShifts.forEach((shift) => {
+              const card = document.createElement("div");
+
+              Object.assign(card.style, {
+                background: "#f5f8fd",
+                border: "1px solid #dbe3ef",
+                borderRadius: "6px",
+                padding: "7px",
+                marginBottom: "6px",
+                lineHeight: "1.45",
+                overflowWrap: "anywhere"
+              });
+
+              const name = document.createElement("div");
+              name.textContent = employeeName(shift.employeeID);
+
+              Object.assign(name.style, {
+                fontWeight: "700",
+                color: "#173b75",
+                marginBottom: "3px"
+              });
+
+              const time = document.createElement("div");
+
+              time.textContent =
+                `${minutesToTime(shift.start)}–` +
+                `${minutesToTime(shift.end)}` +
+                (shift.end <= shift.start ? " (+1)" : "");
+
+              card.appendChild(name);
+              card.appendChild(time);
+              cell.appendChild(card);
+            });
+
+            if (dayShifts.length === 0) {
+              cell.textContent = "—";
+              cell.style.color = "#94a3b8";
+              cell.style.textAlign = "center";
+            }
+
+            row.appendChild(cell);
+          });
+
+          table.appendChild(row);
+        });
+
+        element.appendChild(table);
+        document.body.appendChild(element);
+        exportElements.push(element);
+      }
+
+      // Convert each weekly section into a canvas.
+      const canvases = [];
+
+      for (const element of exportElements) {
+        const canvas = await html2canvas(element, {
+  backgroundColor: "#ffffff",
+  scale: 1.5,
+  logging: false
+});
+
+        canvases.push(canvas);
+      }
+
+      if (shareFormat === "pdf") {
+        // A multi-week PDF gets one landscape page per week.
+        const pdf = new jsPDF({
+          orientation: "landscape",
+          unit: "mm",
+          format: "a3"
+        });
+
+        for (let index = 0; index < canvases.length; index++) {
+          if (index > 0) {
+            pdf.addPage("a3", "landscape");
+          }
+
+          const canvas = canvases[index];
+          const image = canvas.toDataURL("image/jpeg", 0.82);
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
+
+          const ratio = Math.min(
+            pageWidth / canvas.width,
+            pageHeight / canvas.height
+          );
+
+          const width = canvas.width * ratio;
+          const height = canvas.height * ratio;
+
+          pdf.addImage(
+            image,
+            "PNG",
+            (pageWidth - width) / 2,
+            (pageHeight - height) / 2,
+            width,
+            height
+          );
+        }
+
+        const blob = pdf.output("blob");
+
+        await shareOrDownloadFile(
+          blob,
+          `${filePrefix}.pdf`,
+          "application/pdf",
+          `${start.toLocaleDateString("it-IT")} – ${end.toLocaleDateString("it-IT")}`
+        );
+      } else if (canvases.length === 1) {
+        // Preserve the current single-week PNG experience.
+        const blob = await new Promise((resolve, reject) => {
+          canvases[0].toBlob((result) => {
+            if (result) {
+              resolve(result);
+            } else {
+              reject(new Error("Impossibile creare l'immagine."));
+            }
+          }, "image/png");
+        });
+
+        await shareOrDownloadFile(
+          blob,
+          `${filePrefix}.png`,
+          "image/png",
+          `${start.toLocaleDateString("it-IT")} – ${end.toLocaleDateString("it-IT")}`
+        );
+      } else {
+        // Longer PNG exports are downloaded individually, one per week.
+        for (let index = 0; index < canvases.length; index++) {
+          const blob = await new Promise((resolve, reject) => {
+            canvases[index].toBlob((result) => {
+              if (result) {
+                resolve(result);
+              } else {
+                reject(new Error("Impossibile creare l'immagine."));
+              }
+            }, "image/png");
+          });
+
+          const week = weeks[index];
+          const weeklyFileName =
+            `${filePrefix}-settimana-${index + 1}.png`;
+
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+
+          link.href = url;
+          link.download = weeklyFileName;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+
+          window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+        }
+
+        alert(
+          `Sono state generate ${canvases.length} immagini PNG, una per settimana. ` +
+          "Controlla la cartella Download."
+        );
+      }
+    } catch (error) {
+      console.error("Errore nella creazione dell'orario:", error);
+      alert(`Impossibile generare il file: ${error.message}`);
+    } finally {
+      exportElements.forEach((element) => element.remove());
+      setIsGeneratingExport(false);
+    }
+  }
+
+  async function shareOrDownloadFile(blob, fileName, mimeType, periodLabel) {
+    const file = new File([blob], fileName, {
+      type: mimeType
+    });
+
+    const message =
+      `📅 VOLUME – Orario del personale\n${periodLabel}\n` +
+      "Orario aggiornato.";
+
+    if (
+      navigator.canShare &&
+      navigator.canShare({ files: [file] }) &&
+      navigator.share
+    ) {
+      try {
+        await navigator.share({
+          title: "VOLUME – Orario del personale",
+          text: message,
+          files: [file]
+        });
+
+        return;
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return;
+        }
+
+        console.warn("Condivisione diretta non disponibile:", error);
+      }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(
+        `${message}\n\nhttps://danyalrahujo.github.io/volume-pwa/`
+      )}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
 
   function getMonday(date) {
 
@@ -2619,6 +3057,111 @@ function shareTimetableOnWhatsApp() {
 )}
 
 </div>
+{showShareModal && (
+  <div
+    className="modal-backdrop"
+    onClick={(event) => {
+      if (event.target === event.currentTarget) {
+        setShowShareModal(false);
+      }
+    }}
+  >
+    <div
+      className="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="share-modal-title"
+    >
+      <div className="modal-header">
+        <div>
+          <h2 id="share-modal-title">
+            Condividi orario
+          </h2>
+
+          <p>
+            Genera un'immagine o un PDF da inviare su WhatsApp.
+          </p>
+        </div>
+
+        <button
+          className="close-button"
+          onClick={() => setShowShareModal(false)}
+          aria-label="Chiudi"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="form">
+        <label>
+          Periodo dell'orario
+
+          <select
+            value={sharePeriod}
+            onChange={(event) =>
+              setSharePeriod(event.target.value)
+            }
+          >
+            <option value="this-week">
+              Questa settimana
+            </option>
+
+            <option value="next-week">
+              Prossima settimana
+            </option>
+
+            <option value="two-weeks">
+              Prossime 2 settimane
+            </option>
+
+            <option value="this-month">
+              Questo mese
+            </option>
+          </select>
+        </label>
+
+        <label>
+          Formato del file
+
+          <select
+            value={shareFormat}
+            onChange={(event) =>
+              setShareFormat(event.target.value)
+            }
+          >
+            <option value="png">
+              Immagine PNG
+            </option>
+
+            <option value="pdf">
+              Documento PDF
+            </option>
+          </select>
+        </label>
+
+        <div className="form-actions">
+          <button
+            className="secondary-button"
+            onClick={() => setShowShareModal(false)}
+            disabled={isGeneratingExport}
+          >
+            Annulla
+          </button>
+
+          <button
+            className="primary-button"
+            onClick={generateTimetableExport}
+            disabled={isGeneratingExport}
+          >
+            {isGeneratingExport
+              ? "Generazione in corso..."
+              : "Genera e condividi"}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 {showPublishModal && (
 
   <div className="modal-backdrop">
